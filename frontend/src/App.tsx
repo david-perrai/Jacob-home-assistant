@@ -2,11 +2,21 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { usePorcupine } from '@picovoice/porcupine-react'
 import { useAudioRecorder } from './hooks/useAudioRecorder'
 import './App.css'
+import ShoppingListApi from './api/ShoppingListApi';
+import AiApi from './api/AiApi';
+import TranscriptionService from './api/TranscriptionService';
+
+interface ShoppingItem {
+  id: number;
+  name: string;
+  quantity: number;
+}
 
 function App() {
   const [keywordDetected, setKeywordDetected] = useState(false)
   const [detectionCount, setDetectionCount] = useState(0)
   const [isInitializing, setIsInitializing] = useState(false)
+  const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([])
   
   // États Whisper
   const [transcription, setTranscription] = useState('')
@@ -14,7 +24,8 @@ function App() {
   const [loadProgress, setLoadProgress] = useState(0)
   const [latency, setLatency] = useState<number | null>(null)
   const startTime = useRef<number | null>(null)
-  const worker = useRef<Worker | null>(null)
+  const shoppingListApi = new ShoppingListApi();
+  const aiApi = new AiApi();
 
   const {
     keywordDetection,
@@ -30,43 +41,24 @@ function App() {
 
   const { isRecording, audioData, startRecording, stopRecording } = useAudioRecorder()
 
-  // Initialisation du worker au montage
+  // Initialisation du pipeline au montage
   useEffect(() => {
-    if (!worker.current) {
-      worker.current = new Worker(new URL('./worker.js', import.meta.url), {
-        type: 'module'
-      })
-    }
-
-    const onMessageReceived = (e: MessageEvent) => {
-      switch (e.data.status) {
-        case 'progress':
-          setLoadProgress(e.data.progress.progress || 0)
-          break
-        case 'loading':
-          setSttStatus('loading')
-          break
-        case 'transcribing':
-          setSttStatus('transcribing')
-          break
-        case 'complete':
-          setTranscription(e.data.output)
-          setSttStatus('complete')
-          if (startTime.current) {
-            setLatency(Date.now() - startTime.current)
+    const initTranscription = async () => {
+      setSttStatus('loading')
+      try {
+        await TranscriptionService.getInstance((progress) => {
+          if (progress.status === 'progress') {
+            setLoadProgress(progress.progress || 0)
           }
-          break
-        case 'error':
-          console.error('Whisper worker error:', e.data.error)
-          setSttStatus('error')
-          break
+        })
+        setSttStatus('idle')
+      } catch (err: any) {
+        console.error('Transcription init error:', err)
+        setSttStatus('error')
       }
     }
 
-    worker.current.addEventListener('message', onMessageReceived)
-    return () => {
-      worker.current?.removeEventListener('message', onMessageReceived)
-    }
+    initTranscription()
   }, [])
 
   const initPorcupine = useCallback(async () => {
@@ -114,9 +106,7 @@ function App() {
     // On ne traite la détection que si elle est nouvelle
     if (keywordDetection !== null && keywordDetection !== lastDetection.current) {
       lastDetection.current = keywordDetection
-      startTime.current = Date.now()
-      setLatency(null)
-      
+    
       setKeywordDetected(true)
       setDetectionCount(prev => prev + 1)
       setTranscription('') // Clear previous text
@@ -136,10 +126,36 @@ function App() {
 
   // Quand l'enregistrement se termine, on lance la transcription
   useEffect(() => {
-    if (audioData && worker.current) {
-      worker.current.postMessage({
-        audio: audioData
-      })
+    if (audioData) {
+      const runTranscription = async () => {
+        setLatency(null)
+        startTime.current = Date.now()
+        setSttStatus('transcribing')
+
+        try {
+          const text = await TranscriptionService.transcribe(audioData, (progress) => {
+            if (progress.status === 'progress') {
+              setLoadProgress(progress.progress || 0)
+            }
+          })
+
+          setTranscription(text)
+          setSttStatus('complete')
+          
+          if (startTime.current) {
+            setLatency(Date.now() - startTime.current)
+          }
+
+          aiApi.prompt(text).then((response) => {
+            console.log(response)
+          })
+        } catch (err: any) {
+          console.error('Transcription error:', err)
+          setSttStatus('error')
+        }
+      }
+
+      runTranscription()
     }
   }, [audioData])
 
@@ -148,7 +164,7 @@ function App() {
     if (isRecording) {
       const timer = setTimeout(() => {
         stopRecording()
-      }, 6000)
+      }, 5000)
       return () => clearTimeout(timer)
     }
   }, [isRecording, stopRecording])
@@ -157,82 +173,134 @@ function App() {
     stopRecording()
   }, [stopRecording])
 
+  const fetchShoppingList = useCallback(async () => {
+    try {
+      const shoppingList = await shoppingListApi.getShoppingList();
+      setShoppingList(shoppingList)
+    } catch (error) {
+      console.error('Failed to fetch shopping list:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchShoppingList()
+  }, [fetchShoppingList])
+
+  // Connexion SSE pour les mises à jour en temps réel
+  useEffect(() => {
+    const eventSource = new EventSource('/api/sse');
+
+    eventSource.addEventListener('shoppingList', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'ShoppingList.add') {
+          console.log('Nouvel élément ajouté, rafraîchissement de la liste...');
+          fetchShoppingList();
+        }
+      } catch (e) {
+        console.error('Erreur lors du parsing de l\'événement SSE:', e);
+      }
+    });
+
+    eventSource.onerror = (error) => {
+      console.error('Erreur SSE:', error);
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [fetchShoppingList]);
+
   return (
-    <main>
-      <div className={`card ${isListening ? 'listening' : ''} ${isRecording ? 'recording' : ''} ${keywordDetected ? 'detected' : ''}`}>
-        <h1>Jacob</h1>
-        <p className="subtitle">Assistant IA Intelligent</p>
-        
-        <div className="status-container">
-          <div className={`visualizer-ring ${isListening ? 'listening' : ''} ${isRecording ? 'recording' : ''} ${keywordDetected ? 'detected' : ''}`}>
-            <div className="status-dot"></div>
-          </div>
-          <span className="status-text">
-            {keywordDetected ? 'Détecté !' : 
-             isRecording ? 'Enregistrement vocal...' :
-             sttStatus === 'transcribing' ? 'Analyse en cours...' :
-             isListening ? 'À l\'écoute' : 
-             isInitializing ? 'Initialisation...' : 'En pause'}
+    <div className="dashboard-container">
+      <header className={`ai-mini-header ${isListening ? 'listening' : ''} ${isRecording ? 'recording' : ''} ${keywordDetected ? 'detected' : ''}`}>
+        <div className="ai-status-compact">
+          <div className="status-dot-mini"></div>
+          <span className="status-text-mini">
+            {keywordDetected ? 'Jacob: Détecté !' : 
+             isRecording ? 'Jacob: Enregistrement...' :
+             sttStatus === 'transcribing' ? 'Jacob: Analyse...' :
+             isListening ? 'Jacob: Prêt' : 'Jacob: Inactif'}
           </span>
         </div>
-
+        
         {sttStatus === 'loading' && (
-          <div className="progress-container">
-            <div className="progress-bar" style={{ width: `${loadProgress}%` }}></div>
-            <p className="progress-label">Chargement de l'intelligence local ({Math.round(loadProgress)}%)</p>
+          <div className="mini-progress">
+            <div className="mini-progress-bar" style={{ width: `${loadProgress}%` }}></div>
           </div>
         )}
 
-        <div className="transcription-area">
-          {sttStatus === 'transcribing' && <div className="dot-flashing"></div>}
-          {transcription && <p className="transcription-text">"{transcription}"</p>}
+        <div className="mini-transcription">
+          {transcription && <p>"{transcription}"</p>}
         </div>
 
-        {error && (
-          <div className="error-msg">
-            Désolé, une erreur est survenue : {error.message}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+        <div className="header-controls">
           {!isLoaded ? (
-            <button 
-              onClick={initPorcupine} 
-              disabled={isInitializing}
-            >
-              {isInitializing ? 'Chargement...' : 'Réessayer l\'initialisation'}
+            <button className="mini-btn" onClick={initPorcupine} disabled={isInitializing}>
+              {isInitializing ? '...' : 'Recréer'}
             </button>
           ) : (
-            <>
-              {isRecording ? (
-                <button className="stop-btn" onClick={stopAudioSession}>Terminer de parler</button>
-              ) : !isListening ? (
-                <button onClick={() => start()}>Reprendre l'écoute</button>
-              ) : (
-                <button 
-                  className="stop-btn" 
-                  onClick={() => stop()}
-                >
-                  Arrêter l'assistant
-                </button>
-              )}
-            </>
+            <button 
+              className={`mini-btn ${isRecording || isListening ? 'stop' : ''}`} 
+              onClick={() => (isRecording ? stopAudioSession() : isListening ? stop() : start())}
+            >
+              {isRecording ? 'Stop' : isListening ? 'Pause' : 'Play'}
+            </button>
           )}
         </div>
+      </header>
 
-        {latency !== null && (
-          <div className="latency-info">
-            Temps de réponse : {(latency / 1000).toFixed(2)}s
+      <main className="dashboard-grid">
+        {/* Weather Block */}
+        <section className="dashboard-card weather-card">
+          <div className="card-header">
+            <span className="icon">☀️</span>
+            <h2>Météo</h2>
           </div>
-        )}
+          <div className="weather-content">
+            <div className="temp">22°C</div>
+            <div className="condition">Ensoleillé</div>
+            <div className="location">Paris, FR</div>
+          </div>
+        </section>
 
-        {detectionCount > 0 && (
-          <div className="stats">
-            {detectionCount} {detectionCount === 1 ? 'interaction' : 'interactions'} cette session
+        {/* Shopping List Block */}
+        <section className="dashboard-card shopping-card">
+          <div className="card-header">
+            <span className="icon">🛒</span>
+            <h2>Courses</h2>
           </div>
-        )}
-      </div>
-    </main>
+          <ul className="shopping-list">
+            {shoppingList.length > 0 ? (
+              shoppingList.map((item) => (
+                <li key={item.id}>
+                  <span>🛒</span> {item.name} {item.quantity > 1 && `(x${item.quantity})`}
+                </li>
+              ))
+            ) : (
+              <li className="empty-list">Aucun article</li>
+            )}
+          </ul>
+          <button className="add-item-btn" onClick={() => {/* TODO: Add item interaction */}}>+ Ajouter</button>
+        </section>
+
+        {/* Context Card (Stats/Latency) */}
+        <section className="dashboard-card info-card">
+          <div className="card-header">
+            <span className="icon">📊</span>
+            <h2>Système</h2>
+          </div>
+          <div className="system-info">
+            {latency !== null && (
+              <p>Latence: {(latency / 1000).toFixed(2)}s</p>
+            )}
+            <p>Interactions: {detectionCount}</p>
+            {error && <p className="error-text">Erreur: {error.message}</p>}
+          </div>
+        </section>
+      </main>
+    </div>
   )
 }
 
