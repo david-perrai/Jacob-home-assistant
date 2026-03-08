@@ -1,3 +1,4 @@
+
 export default class AiApi {
     
     private endpoint = "/api/prompt";

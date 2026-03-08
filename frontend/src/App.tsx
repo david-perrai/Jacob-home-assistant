@@ -5,6 +5,7 @@ import './App.css'
 import ShoppingListApi from './api/ShoppingListApi';
 import AiApi from './api/AiApi';
 import TranscriptionService from './api/TranscriptionService';
+import { useTextToSpeech } from './hooks/useTextToSpeech';
 
 interface ShoppingItem {
   id: number;
@@ -38,10 +39,13 @@ function App() {
   } = usePorcupine()
 
   const accessKey = 'd2xNgk8+mW8/dkcfkOaLHogb20Nq4asDXJa6DP45iS+Uys614w1WOw==';
+  
+  const { isRecording, audioData, startRecording, stopRecording } = useAudioRecorder(
+      () => console.log('[App] Silence → arrêt déclenché')
+  );
 
-  const { isRecording, audioData, startRecording, stopRecording } = useAudioRecorder()
+  const { speak } = useTextToSpeech();
 
-  // Initialisation du pipeline au montage
   useEffect(() => {
     const initTranscription = async () => {
       setSttStatus('loading')
@@ -92,12 +96,18 @@ function App() {
 
   // Démarrage automatique dès que c'est chargé
   useEffect(() => {
-    if (isLoaded && !isListening && !error && !isRecording) {
+    const shouldStart = isLoaded && 
+                       !isListening && 
+                       !error && 
+                       !isRecording && 
+                       (sttStatus === 'idle' || sttStatus === 'complete' || sttStatus === 'error');
+
+    if (shouldStart) {
       start().catch(err => {
         console.warn("Auto-start failed, probably user interaction required:", err)
       })
     }
-  }, [isLoaded, isListening, error, start, isRecording])
+  }, [isLoaded, isListening, error, start, isRecording, sttStatus])
 
   const lastDetection = useRef<any>(null)
 
@@ -110,17 +120,15 @@ function App() {
       setKeywordDetected(true)
       setDetectionCount(prev => prev + 1)
       setTranscription('') // Clear previous text
-      
+      speak("Oui j'écoute ?");
+
       // On arrête Picovoice pour laisser le micro à Whisper
-      stop().then(() => {
-        startRecording()
+      stop().then(() => {        
+        setTimeout(() => {
+          startRecording()
+        }, 500)
       })
       
-      const timer = setTimeout(() => {
-        setKeywordDetected(false)
-      }, 3000)
-      
-      return () => clearTimeout(timer)
     }
   }, [keywordDetection, stop, startRecording])
 
@@ -133,21 +141,20 @@ function App() {
         setSttStatus('transcribing')
 
         try {
-          const text = await TranscriptionService.transcribe(audioData, (progress) => {
-            if (progress.status === 'progress') {
-              setLoadProgress(progress.progress || 0)
-            }
-          })
-
-          setTranscription(text)
-          setSttStatus('complete')
+          const text = await TranscriptionService.transcribe(
+            audioData,             
+          );
           
+          setTranscription(text)        
+          setSttStatus('complete')
+          setKeywordDetected(false)
+
           if (startTime.current) {
             setLatency(Date.now() - startTime.current)
           }
 
-          aiApi.prompt(text).then((response) => {
-            console.log(response)
+          aiApi.prompt(text).then((response) => {            
+            speak(response);
           })
         } catch (err: any) {
           console.error('Transcription error:', err)
@@ -158,16 +165,6 @@ function App() {
       runTranscription()
     }
   }, [audioData])
-
-  // Arrêt automatique de l'audio après 6 secondes
-  useEffect(() => {
-    if (isRecording) {
-      const timer = setTimeout(() => {
-        stopRecording()
-      }, 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [isRecording, stopRecording])
 
   const stopAudioSession = useCallback(() => {
     stopRecording()
@@ -192,9 +189,8 @@ function App() {
 
     eventSource.addEventListener('shoppingList', (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'ShoppingList.add') {
-          console.log('Nouvel élément ajouté, rafraîchissement de la liste...');
+        const data = JSON.parse(event.data);        
+        if (['ShoppingList.add', 'ShoppingList.delete'].includes(data.type)) {      
           fetchShoppingList();
         }
       } catch (e) {

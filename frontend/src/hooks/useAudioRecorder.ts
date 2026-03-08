@@ -1,55 +1,93 @@
 import { useState, useRef, useCallback } from 'react';
 
-export function useAudioRecorder() {
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioData, setAudioData] = useState<Float32Array | null>(null);
-  const mediaRecorder = useRef<MediaRecorder | null>(null);
-  const audioChunks = useRef<Blob[]>([]);
-  const audioContext = useRef<AudioContext | null>(null);
+const TARGET_SAMPLE_RATE = 16000;
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
-      mediaRecorder.current.stop();
-      setIsRecording(false);
-    }
-  }, []);
+export function useAudioRecorder(onSilenceDetected?: () => void) {
+    const [isRecording, setIsRecording] = useState(false);
+    const [audioData, setAudioData] = useState<Float32Array | null>(null);
 
-  const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      audioContext.current = new AudioContextClass({ sampleRate: 16000 });
-      
-      mediaRecorder.current = new MediaRecorder(stream);
-      audioChunks.current = [];
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const workletNodeRef  = useRef<AudioWorkletNode | null>(null);
+    const sourceRef       = useRef<MediaStreamAudioSourceNode | null>(null);
+    const streamRef       = useRef<MediaStream | null>(null);
+    const samplesRef      = useRef<Float32Array[]>([]);
 
-      mediaRecorder.current.ondataavailable = (event: BlobEvent) => {
-        if (event.data.size > 0) {
-          audioChunks.current.push(event.data);
+    const flush = useCallback(() => {
+        if (!samplesRef.current.length) return;
+
+        const total = samplesRef.current.reduce((acc, b) => acc + b.length, 0);
+        const merged = new Float32Array(total);
+        let offset = 0;
+        for (const chunk of samplesRef.current) {
+            merged.set(chunk, offset);
+            offset += chunk.length;
         }
-      };
 
-      mediaRecorder.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
-        const arrayBuffer = await audioBlob.arrayBuffer();
-        
-        if (audioContext.current) {
-          const decodedData = await audioContext.current.decodeAudioData(arrayBuffer);
-          const float32Array = decodedData.getChannelData(0);
-          setAudioData(float32Array);
+        console.log(`[Audio] ${(merged.length / TARGET_SAMPLE_RATE).toFixed(2)}s capturées`);
+        setAudioData(merged);
+    }, []);
+
+    const stopRecording = useCallback(() => {
+        workletNodeRef.current?.disconnect();
+        sourceRef.current?.disconnect();
+        streamRef.current?.getTracks().forEach(t => t.stop());
+        audioContextRef.current?.close();
+
+        workletNodeRef.current  = null;
+        sourceRef.current       = null;
+        audioContextRef.current = null;
+
+        flush();
+        setIsRecording(false);
+    }, [flush]);
+
+    const startRecording = useCallback(async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    sampleRate: TARGET_SAMPLE_RATE,
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                }
+            });
+            streamRef.current = stream;
+            samplesRef.current = [];
+
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            audioContextRef.current = new AudioContextClass({ sampleRate: TARGET_SAMPLE_RATE });
+
+            // Charge le worklet depuis /public
+            await audioContextRef.current.audioWorklet.addModule('/audio-processor.js');
+
+            workletNodeRef.current = new AudioWorkletNode(
+                audioContextRef.current,
+                'audio-processor'
+            );
+
+            // Réception des messages depuis le worklet
+            workletNodeRef.current.port.onmessage = (e) => {
+                if (e.data.type === 'samples') {
+                    samplesRef.current.push(new Float32Array(e.data.buffer));
+                } else if (e.data.type === 'silence') {
+                    console.log('[Audio] Silence détecté → arrêt automatique');
+                    onSilenceDetected?.();
+                    stopRecording();
+                }
+            };
+
+            sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
+            sourceRef.current.connect(workletNodeRef.current);
+            // Pas besoin de connecter au destination (pas de sortie audio)
+
+            setIsRecording(true);
+            setAudioData(null);
+
+        } catch (err) {
+            console.error('Erreur microphone:', err);
         }
-        
-        stream.getTracks().forEach(track => track.stop());
-      };
+    }, [stopRecording, onSilenceDetected]);
 
-      mediaRecorder.current.start();
-      setIsRecording(true);
-      setAudioData(null);
-    } catch (err) {
-      console.error("Error accessing microphone:", err);
-    }
-  }, []);
-
-  return { isRecording, audioData, startRecording, stopRecording };
+    return { isRecording, audioData, startRecording, stopRecording };
 }
