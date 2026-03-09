@@ -1,0 +1,23 @@
+services:
+  postgres:
+    container_name: jacob-postgres
+    image: postgres
+    environment:
+      POSTGRES_DB: jacob
+      POSTGRES_USER: jacob
+      POSTGRES_PASSWORD: jacob
+      PGDATA: /data/postgres
+    volumes:
+      - postgres:/data/postgres
+    ports:
+      - 5432:5432
+    networks:
+      - postgres
+    restart: unless-stopped
+
+networks:
+  postgres:
+    driver: bridge
+
+volumes:
+  postgres:

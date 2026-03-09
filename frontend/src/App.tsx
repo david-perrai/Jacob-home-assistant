@@ -6,6 +6,7 @@ import ShoppingListApi from './api/ShoppingListApi';
 import AiApi from './api/AiApi';
 import TranscriptionService from './api/TranscriptionService';
 import { useTextToSpeech } from './hooks/useTextToSpeech';
+import { useSSE } from './hooks/useSSE';
 
 interface ShoppingItem {
   id: number;
@@ -18,6 +19,7 @@ function App() {
   const [detectionCount, setDetectionCount] = useState(0)
   const [isInitializing, setIsInitializing] = useState(false)
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([])
+  const [mapUrl, setMapUrl] = useState<string | null>(null);
   
   // États Whisper
   const [transcription, setTranscription] = useState('')
@@ -38,7 +40,7 @@ function App() {
     stop,
   } = usePorcupine()
 
-  const accessKey = 'd2xNgk8+mW8/dkcfkOaLHogb20Nq4asDXJa6DP45iS+Uys614w1WOw==';
+  const accessKey = import.meta.env.VITE_PICOVOICE_ACCESS_KEY;
   
   const { isRecording, audioData, startRecording, stopRecording } = useAudioRecorder(
       () => console.log('[App] Silence → arrêt déclenché')
@@ -184,29 +186,8 @@ function App() {
   }, [fetchShoppingList])
 
   // Connexion SSE pour les mises à jour en temps réel
-  useEffect(() => {
-    const eventSource = new EventSource('/api/sse');
+  useSSE(fetchShoppingList, setMapUrl);
 
-    eventSource.addEventListener('shoppingList', (event) => {
-      try {
-        const data = JSON.parse(event.data);        
-        if (['ShoppingList.add', 'ShoppingList.delete'].includes(data.type)) {      
-          fetchShoppingList();
-        }
-      } catch (e) {
-        console.error('Erreur lors du parsing de l\'événement SSE:', e);
-      }
-    });
-
-    eventSource.onerror = (error) => {
-      console.error('Erreur SSE:', error);
-      eventSource.close();
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, [fetchShoppingList]);
 
   return (
     <div className="dashboard-container">
@@ -295,6 +276,27 @@ function App() {
             {error && <p className="error-text">Erreur: {error.message}</p>}
           </div>
         </section>
+
+        {/* Google Maps Block */}
+        {mapUrl && (
+          <section className="dashboard-card map-card">
+            <div className="card-header">
+              <span className="icon">🗺️</span>
+              <h2>Navigation</h2>
+              <button className="close-btn" onClick={() => setMapUrl(null)}>×</button>
+            </div>
+            <div className="map-content">
+              <iframe
+                title="Google Maps"
+                width="100%"
+                height="450"
+                style={{ border: 0, borderRadius: '8px' }}
+                src={mapUrl}
+                allowFullScreen
+              ></iframe>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   )
