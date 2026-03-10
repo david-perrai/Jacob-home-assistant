@@ -23,7 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
+client_secret.json
+
 
 # Environment files
 .env
 frontend/.env
+backend/secrets.properties  
+tokens
+backend/target/*

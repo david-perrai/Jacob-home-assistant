@@ -6,9 +6,9 @@ export default class ShoppingListApi {
 
     public async getShoppingList(): Promise<ShoppingItem[]> {
         const response = await fetch(this.endpoint);
-        const result = await response.json();
-        if (result && result.data) {
-            return result.data;
+        const result = await response.json();        
+        if (result) {
+            return result;
         }
         return [];
     }

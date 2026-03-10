@@ -7,6 +7,8 @@ import AiApi from './api/AiApi';
 import TranscriptionService from './api/TranscriptionService';
 import { useTextToSpeech } from './hooks/useTextToSpeech';
 import { useSSE } from './hooks/useSSE';
+import Weather from './components/Weather';
+import { Agenda } from './components/Agenda';
 
 interface ShoppingItem {
   id: number;
@@ -230,17 +232,7 @@ function App() {
 
       <main className="dashboard-grid">
         {/* Weather Block */}
-        <section className="dashboard-card weather-card">
-          <div className="card-header">
-            <span className="icon">☀️</span>
-            <h2>Météo</h2>
-          </div>
-          <div className="weather-content">
-            <div className="temp">22°C</div>
-            <div className="condition">Ensoleillé</div>
-            <div className="location">Paris, FR</div>
-          </div>
-        </section>
+        <Weather />
 
         {/* Shopping List Block */}
         <section className="dashboard-card shopping-card">
@@ -264,17 +256,7 @@ function App() {
 
         {/* Context Card (Stats/Latency) */}
         <section className="dashboard-card info-card">
-          <div className="card-header">
-            <span className="icon">📊</span>
-            <h2>Système</h2>
-          </div>
-          <div className="system-info">
-            {latency !== null && (
-              <p>Latence: {(latency / 1000).toFixed(2)}s</p>
-            )}
-            <p>Interactions: {detectionCount}</p>
-            {error && <p className="error-text">Erreur: {error.message}</p>}
-          </div>
+            <Agenda />
         </section>
 
         {/* Google Maps Block */}

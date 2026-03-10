@@ -34,7 +34,6 @@ public class AiService {
       // Build assistant with all components
       assistant = AiServices.builder(AssistantInterface.class)
             .chatModel(model)
-            .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
             .tools(shoppingListTool, directoryEntryTool)
             .build();
 

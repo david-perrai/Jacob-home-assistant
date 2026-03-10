@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 
 
 const shoppingListEventListener = (onShoppingListUpdate: () => void) => (event: MessageEvent) => {
+  
   try {
     const data = JSON.parse(event.data);
     if (['ShoppingList.add', 'ShoppingList.delete'].includes(data.type)) {
