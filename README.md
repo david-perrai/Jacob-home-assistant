@@ -114,8 +114,9 @@ Lors du premier lancement du backend :
    ```bash
    npm run dev
    ```
-   > [!WARNING]
-   > **Sécurité** : Actuellement, les appels à l'API Picovoice sont effectués directement depuis le frontend. Si vous prévoyez d'exposer cette application sur Internet, il est fortement recommandé de déplacer cette logique côté **backend** pour protéger votre clé d'API.
+
+> [!WARNING]
+> **Sécurité** : Actuellement, les appels à l'API Picovoice sont effectués directement depuis le frontend. Si vous prévoyez d'exposer cette application sur Internet, il est fortement recommandé de déplacer cette logique côté **backend** pour protéger votre clé d'API.
 
 ## 📂 Structure du Projet
 
