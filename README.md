@@ -124,6 +124,6 @@ Lors du premier lancement du backend :
 Jacob/
 ├── backend/            # Code source Spring Boot (API, Services, RAG)
 ├── frontend/           # Code source React (UI, Hooks, Audio processing)
-├── tokens/             # Ressources et tokens pour Picovoice
+├── tokens/             # Ressources et tokens pour Google Calendar
 └── README.md           # Documentation du projet
 ```
