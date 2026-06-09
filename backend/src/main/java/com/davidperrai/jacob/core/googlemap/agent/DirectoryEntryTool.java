@@ -1,14 +1,11 @@
 package com.davidperrai.jacob.core.googlemap.agent;
 
-import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 import org.springframework.stereotype.Component;
 
 import com.davidperrai.jacob.common.dto.Response;
 import com.davidperrai.jacob.common.service.SseService;
-import com.davidperrai.jacob.core.googlemap.entity.DirectoryEntry;
 import com.davidperrai.jacob.core.googlemap.service.DirectoryEntryService;
 
 import dev.langchain4j.agent.tool.Tool;
@@ -30,18 +27,15 @@ public class DirectoryEntryTool {
     // max" "affiche moi l'adresse de chez max"
     // """)
     // public Response navigateToADirectoryEntry(String surname) {
-    // List<DirectoryEntry> directoryEntries =
-    // directoryEntryService.findDirectoryEntryBySurname(surname);
-    // if (directoryEntries.isEmpty()) {
-    // return new Response("je n'ai pas trouvé d'entrée dans l'annuaire pour le
-    // prénom " + surname, null);
-    // }
+    //     List<DirectoryEntry> directoryEntries = directoryEntryService.findDirectoryEntryBySurname(surname);
+    //     if (directoryEntries.isEmpty()) {
+    //         return new Response("je n'ai pas trouvé d'entrée dans l'annuaire pour le prénom " + surname, null);
+    //     }
 
-    // sseService.sendEvent("directoryEntry",
-    // Map.of("data", directoryEntries.get(0).getAddress(), "type",
-    // "DirectoryEntry.navigateTo"));
-    // return new Response("je proccède à la navigation vers l'adresse de ",
-    // directoryEntries.get(0).getSurname());
+    //     sseService.sendEvent("directoryEntry",
+    //     Map.of("data", directoryEntries.get(0).getAddress(), "type",
+    //     "DirectoryEntry.navigateTo"));
+    //     return new Response("je proccède à la navigation vers l'adresse de ", directoryEntries.get(0).getSurname());
     // }
 
     @Tool("""

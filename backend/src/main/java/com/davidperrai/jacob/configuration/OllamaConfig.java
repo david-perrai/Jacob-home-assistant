@@ -20,8 +20,10 @@ public class OllamaConfig {
         return OllamaChatModel.builder()
                 .baseUrl(baseUrl)
                 .temperature(0.0)
+                .topK(64)
+                .topP(0.95)
                 .logRequests(true)
-                .logResponses(true)
+                .logResponses(true)                
                 .modelName(modelName)
                 .build();
     }

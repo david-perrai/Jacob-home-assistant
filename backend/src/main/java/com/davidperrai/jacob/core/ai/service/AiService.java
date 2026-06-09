@@ -9,8 +9,8 @@ import org.springframework.stereotype.Service;
 import com.davidperrai.jacob.configuration.AssistantInterface;
 import com.davidperrai.jacob.core.googlemap.agent.DirectoryEntryTool;
 import com.davidperrai.jacob.core.shoppinglist.agent.ShoppingListTool;
+import com.davidperrai.jacob.core.weather.agent.WeatherTool;
 
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.PostConstruct;
@@ -25,6 +25,7 @@ public class AiService {
    private final OllamaChatModel model;
    private final ShoppingListTool shoppingListTool;
    private final DirectoryEntryTool directoryEntryTool;
+   private final WeatherTool weatherTool;
 
    private AssistantInterface assistant;
 
@@ -34,7 +35,7 @@ public class AiService {
       // Build assistant with all components
       assistant = AiServices.builder(AssistantInterface.class)
             .chatModel(model)
-            .tools(shoppingListTool, directoryEntryTool)
+            .tools(shoppingListTool, directoryEntryTool, weatherTool)
             .build();
 
       log.info("AI Service initialized successfully");

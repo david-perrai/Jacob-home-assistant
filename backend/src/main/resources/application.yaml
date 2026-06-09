@@ -17,7 +17,7 @@ spring:
         format_sql: true
 ollama:
   base-url: http://localhost:11434
-  model-name: llama3.2:3b
+  model-name: gemma4:e4b
   embedding-model: nomic-embed-text
 
 rag:

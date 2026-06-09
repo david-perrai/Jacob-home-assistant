@@ -40,6 +40,7 @@ public class ShoppingListTool {
     public Response createShoppingList(
             @P("The list of items as a JSON string. Example: '[{\"name\": \"riz\", \"quantity\": 1}]'") String items) {
         try {
+            log.info("Ajout d'articles à la liste de courses: {}", items);
             // On force la désérialisation manuelle de la String reçue
             List<ShoppingListItemDto> itemList = objectMapper.readValue(items,
                     new TypeReference<List<ShoppingListItemDto>>() {
