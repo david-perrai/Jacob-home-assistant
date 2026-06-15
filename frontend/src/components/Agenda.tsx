@@ -47,8 +47,9 @@ export function Agenda() {
         
         const date = new Date(timestamp);
         return date.toLocaleDateString('fr-FR', {
+            weekday: 'long',
             day: '2-digit',
-            month: 'short'
+            month: 'long'
         });
     };
 

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.davidperrai.jacob.configuration.AssistantInterface;
 import com.davidperrai.jacob.core.googlemap.agent.DirectoryEntryTool;
+import com.davidperrai.jacob.core.netatmo.agent.NetatmoTool;
 import com.davidperrai.jacob.core.shoppinglist.agent.ShoppingListTool;
 import com.davidperrai.jacob.core.weather.agent.WeatherTool;
 
@@ -26,6 +27,7 @@ public class AiService {
    private final ShoppingListTool shoppingListTool;
    private final DirectoryEntryTool directoryEntryTool;
    private final WeatherTool weatherTool;
+   private final NetatmoTool netatmoTool;
 
    private AssistantInterface assistant;
 
@@ -35,7 +37,7 @@ public class AiService {
       // Build assistant with all components
       assistant = AiServices.builder(AssistantInterface.class)
             .chatModel(model)
-            .tools(shoppingListTool, directoryEntryTool, weatherTool)
+            .tools(shoppingListTool, directoryEntryTool, weatherTool, netatmoTool)
             .build();
 
       log.info("AI Service initialized successfully");

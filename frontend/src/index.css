@@ -445,3 +445,148 @@ body {
   color: #94a3b8;
   font-size: 0.9rem;
 }
+
+/* Netatmo & Indoor Temperature Styles */
+.indoor-temp-card {
+  border-color: rgba(249, 115, 22, 0.15); /* orange tinted border for netatmo theme */
+}
+
+.indoor-temp-card:hover {
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.netatmo-auth-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+.netatmo-connect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: white;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px 0 rgba(249, 115, 22, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.netatmo-connect-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 rgba(249, 115, 22, 0.6);
+  background: linear-gradient(135deg, #fb923c, #f97316);
+}
+
+.netatmo-connect-btn:active {
+  transform: translateY(0);
+}
+
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.room-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  transition: all 0.2s ease;
+}
+
+.room-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.room-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-dot.online {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.status-dot.offline {
+  background-color: #f97316;
+  box-shadow: 0 0 6px #f97316;
+}
+
+.room-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+.room-temp {
+  display: flex;
+  align-items: baseline;
+  margin: 0.25rem 0;
+}
+
+.temp-value {
+  font-size: 2.25rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f97316, #fdba74);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.temp-unit {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fdba74;
+  margin-left: 0.1rem;
+}
+
+.room-temp-missing {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #475569;
+  margin: 0.25rem 0;
+}
+
+.room-setpoint {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+  display: flex;
+  gap: 0.2rem;
+}
+
+.setpoint-value {
+  color: #94a3b8;
+  font-weight: 600;
+}
