@@ -1,109 +1,106 @@
-import { useVoiceAssistant } from "./hooks/useVoiceAssistant";
-import { useSSE } from "./hooks/useSSE";
-import ShoppingList from "./components/shoppingList";
-import GoogleMap from "./components/googleMap";
-import Weather from "./components/Weather";
-import IndoorTemp from "./components/IndoorTemp";
+import MicIcon from "@mui/icons-material/Mic";
+import StopIcon from "@mui/icons-material/Stop";
+import {
+  AppBar,
+  Box,
+  Button,
+  Chip,
+  Container,
+  LinearProgress,
+  Paper,
+  Stack,
+  Toolbar,
+  Typography,
+} from "@mui/material";
 import { Agenda } from "./components/Agenda";
-import "./App.css";
+import GoogleMap from "./components/googleMap";
+import IndoorTemp from "./components/IndoorTemp";
+import ShoppingList from "./components/shoppingList";
+import Weather from "./components/Weather";
+import { useSSE } from "./hooks/useSSE";
+import { useVoiceAssistant } from "./hooks/useVoiceAssistant";
 
 function App() {
   const {
-    isLoaded,
-    isListening,
-    isInitializing,
-    keywordDetected,
     isRecording,
     transcription,
     sttStatus,
-    loadProgress,
-    initPorcupine,
-    start,
-    stop,
-    stopAudioSession,
+    toggleRecording,
   } = useVoiceAssistant();
 
-  // Connexion SSE partagée
   const eventSource = useSSE();
+  const isBusy = sttStatus === "transcribing";
+  const statusLabel = isRecording
+    ? "Je vous écoute"
+    : sttStatus === "transcribing"
+      ? "Envoi et analyse en cours"
+      : sttStatus === "error"
+        ? "Transcription indisponible"
+        : "Prêt à vous écouter";
 
   return (
-    <div className="dashboard-container">
-      <header
-        className={`ai-mini-header ${isListening ? "listening" : ""} ${isRecording ? "recording" : ""} ${keywordDetected ? "detected" : ""}`}
+    <Box className="dashboard-container">
+      <AppBar
+        position="sticky"
+        elevation={0}
+        color="transparent"
+        className={`ai-mini-header ${isRecording ? "recording" : ""}`}
       >
-        <div className="ai-status-compact">
-          <div className="status-dot-mini"></div>
-          <span className="status-text-mini">
-            {keywordDetected
-              ? "Jacob: Détecté !"
-              : isRecording
-                ? "Jacob: Enregistrement..."
-                : sttStatus === "transcribing"
-                  ? "Jacob: Analyse..."
-                  : isListening
-                    ? "Jacob: Prêt"
-                    : "Jacob: Inactif"}
-          </span>
-        </div>
+        <Toolbar className="assistant-toolbar" disableGutters>
+          <Stack className="assistant-identity" spacing={0.5}>
+            <Typography component="h1" variant="h6" className="assistant-title">
+              Jacob
+            </Typography>
+            <Chip
+              size="small"
+              label={statusLabel}
+              color={isRecording ? "error" : sttStatus === "error" ? "warning" : "success"}
+              variant="outlined"
+            />
+          </Stack>
 
-        {sttStatus === "loading" && (
-          <div className="mini-progress">
-            <div
-              className="mini-progress-bar"
-              style={{ width: `${loadProgress}%` }}
-            ></div>
-          </div>
+          <Stack
+            className="assistant-action"
+            direction="row"
+            spacing={2}
+            sx={{ alignItems: "center" }}
+          >
+            <Button
+              variant="contained"
+              color={isRecording ? "error" : "primary"}
+              startIcon={isRecording ? <StopIcon /> : <MicIcon />}
+              onClick={toggleRecording}
+              disabled={isBusy}
+              aria-label={isRecording ? "Arrêter l'enregistrement" : "Démarrer l'enregistrement"}
+            >
+              {isRecording ? "Terminer" : "Parler à Jacob"}
+            </Button>
+          </Stack>
+        </Toolbar>
+        {sttStatus === "transcribing" && <LinearProgress className="assistant-progress" />}
+      </AppBar>
+
+      <Container maxWidth="xl" disableGutters className="dashboard-content">
+        {transcription && (
+          <Paper className="transcription-panel" elevation={0}>
+            <Typography variant="overline" color="text.secondary">
+              Dernière demande
+            </Typography>
+            <Typography variant="body1">{transcription}</Typography>
+          </Paper>
         )}
 
-        <div className="mini-transcription">
-          {transcription && <p>"{transcription}"</p>}
-        </div>
-
-        <div className="header-controls">
-          {!isLoaded ? (
-            <button
-              className="mini-btn"
-              onClick={initPorcupine}
-              disabled={isInitializing}
-            >
-              {isInitializing ? "..." : "Recréer"}
-            </button>
-          ) : (
-            <button
-              className={`mini-btn ${isRecording || isListening ? "stop" : ""}`}
-              onClick={() =>
-                isRecording
-                  ? stopAudioSession()
-                  : isListening
-                    ? stop()
-                    : start()
-              }
-            >
-              {isRecording ? "Stop" : isListening ? "Pause" : "Play"}
-            </button>
-          )}
-        </div>
-      </header>
-
-      <main className="dashboard-grid">
-        {/* Weather Block */}
-        <Weather />
-
-        {/* Indoor Temperature Block */}
-        <IndoorTemp sseEventSource={eventSource} />
-
-        {/* Shopping List Block */}
-        <ShoppingList sseEventSource={eventSource} />
-
-        {/* Context Card (Stats/Latency) */}
-        <section className="dashboard-card info-card">
-          <Agenda />
-        </section>
-
-        {/* Google Maps Block */}
-        <GoogleMap sseEventSource={eventSource} />
-      </main>
-    </div>
+        <Box component="main" className="dashboard-grid">
+          <Weather />
+          <IndoorTemp sseEventSource={eventSource} />
+          <ShoppingList sseEventSource={eventSource} />
+          <Paper component="section" className="dashboard-card info-card" elevation={0}>
+            <Agenda />
+          </Paper>
+          <GoogleMap sseEventSource={eventSource} />
+        </Box>
+      </Container>
+    </Box>
   );
 }
 

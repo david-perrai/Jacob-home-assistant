@@ -5,7 +5,7 @@ Jacob est un assistant personnel intelligent conçu pour centraliser et simplifi
 ## 🚀 Fonctionnalités
 
 - **Intelligence Artificielle** : Intégration de LLMs via Ollama pour répondre à vos requêtes de manière naturelle.
-- **Interaction Vocale** : Détection du mot d'éveil ("Jacob") et transcription de la parole en texte (Picovoice Porcupine & Hugging Face Transformers).
+- **Interaction Vocale** : Enregistrement déclenché depuis l'interface, transcription de la parole en texte et réponse vocale.
 - **Gestion d'Agenda** : Synchronisation et affichage des événements Google Calendar.
 - **Météo en Temps Réel** : Prévisions météorologiques locales avec une vue sur 3 jours.
 - **Liste de Courses** : Gestion intuitive de vos listes de courses via des commandes vocales ou textuelles.
@@ -26,10 +26,8 @@ Le projet est divisé en deux parties principales :
 ### Frontend (React / Vite)
 
 - **Framework** : React 19 avec Vite.
-- **Traitement Audio** :
-  - [Picovoice Porcupine](https://picovoice.ai/) pour la détection du mot d'éveil.
-  - [Hugging Face Transformers.js](https://huggingface.co/docs/transformers.js/) pour la transcription audio locale.
-- **Style** : CSS Moderne avec une interface réactive et esthétique.
+- **Traitement Audio** : [whisper.cpp](https://github.com/ggml-org/whisper.cpp) sur le serveur, avec un modèle quantifié, pour éviter de télécharger le modèle dans chaque navigateur.
+- **Interface** : React avec Material UI.
 
 ## 📦 Installation et Configuration
 
@@ -44,11 +42,23 @@ Le projet est divisé en deux parties principales :
 ### Backend
 
 1. Clonez le dépôt.
-2. Lancez la base de données PostgreSQL avec Docker Compose :
+2. Téléchargez le modèle Whisper puis construisez et lancez PostgreSQL et le serveur de transcription avec Docker Compose :
    ```bash
    cd backend
-   docker-compose up -d
+   mkdir -p models
+   curl -fL \
+     https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin \
+     -o models/ggml-base-q5_1.bin
+   docker compose up -d --build
    ```
+
+### Service de transcription Whisper
+
+Docker Compose construit le serveur HTTP whisper.cpp depuis sa version officielle `v1.9.4`, puis démarre le service. Le modèle doit être présent dans `backend/models/ggml-base-q5_1.bin`, monté en lecture seule dans le conteneur. Le modèle `ggml-base-q5_1.bin` est multilingue (français inclus) et pèse environ 60 Mo. La compilation désactive les optimisations spécifiques à la machine de build afin d’éviter les instructions CPU indisponibles dans l’environnement Linux du conteneur.
+
+Le backend Java relaie les enregistrements WAV au service sur `http://localhost:8081`. Le port du service Whisper est publié uniquement sur l’interface locale de la machine ; le navigateur communique avec l’API Java, pas directement avec Whisper. Si le serveur Whisper est hébergé ailleurs, configurez `WHISPER_BASE_URL`.
+
+Le navigateur envoie l’enregistrement lorsque le détecteur de silence termine ; aucun modèle de transcription n’est chargé côté navigateur. Sur macOS avec Apple Silicon, le conteneur Linux Docker utilise le CPU et n’accède pas à Metal. Si la performance est insuffisante, l’installation native de whisper.cpp peut exploiter Metal.
 
 ### 🗓️ Configuration Google Calendar API
 
@@ -100,23 +110,14 @@ Lors du premier lancement du backend :
 > [!WARNING]
 > **Sécurité** : Actuellement, les appels à l'API météo sont effectués directement depuis le frontend. Si vous prévoyez d'exposer cette application sur Internet, il est fortement recommandé de déplacer cette logique côté **backend** pour protéger votre clé d'API.
 
-### 🎙️ Configuration Picovoice (Wake Word)
+### Démarrer le frontend
 
-1. Créez un compte sur [Picovoice Console](https://console.picovoice.ai/).
-2. Récupérez votre **AccessKey**.
-3. Ajoutez cette clé dans le fichier `frontend/.env` :
+Depuis le dossier `frontend`, installez les dépendances et lancez le serveur :
 
-   ```env
-   VITE_PICOVOICE_ACCESS_KEY=votre_cle_ici
-   ```
-
-4. Lancez le serveur de développement :
    ```bash
+   pnpm install
    npm run dev
    ```
-
-> [!WARNING]
-> **Sécurité** : Actuellement, les appels à l'API Picovoice sont effectués directement depuis le frontend. Si vous prévoyez d'exposer cette application sur Internet, il est fortement recommandé de déplacer cette logique côté **backend** pour protéger votre clé d'API.
 
 ## 📂 Structure du Projet
 

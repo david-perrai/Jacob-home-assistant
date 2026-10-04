@@ -1,6 +1,10 @@
 spring:
   application:
     name: jacob
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
   datasource:
     url: jdbc:postgresql://localhost:5432/jacob
     username: jacob
@@ -17,7 +21,7 @@ spring:
         format_sql: true
 ollama:
   base-url: http://localhost:11434
-  model-name: llama3.2:3b
+  model-name: gemma4:e4b
   embedding-model: nomic-embed-text
 
 rag:
@@ -27,6 +31,9 @@ rag:
   min-score: 0.7
   # documents-path: /Users/davidperrai/Documents/Projets/bookingMcp/booking-llm-backend/ragdocuments
   # embeddings-store-path: /Users/davidperrai/Documents/Projets/bookingMcp/booking-llm-backend/embeddings-store.json
+
+whisper:
+  base-url: ${WHISPER_BASE_URL:http://localhost:8081}
 
 logging:
   level:

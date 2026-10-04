@@ -32,3 +32,5 @@ frontend/.env
 backend/secrets.properties  
 tokens
 backend/target/*
+backend/models/*
+!backend/models/.gitkeep

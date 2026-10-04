@@ -1,56 +1,62 @@
-import { pipeline, env } from '@huggingface/transformers';
+const SAMPLE_RATE = 16000;
 
-env.allowLocalModels = false;
-env.useBrowserCache = true;
+function encodeWav(samples: Float32Array): Blob {
+  const headerSize = 44;
+  const bytesPerSample = 2;
+  const buffer = new ArrayBuffer(headerSize + samples.length * bytesPerSample);
+  const view = new DataView(buffer);
+
+  const writeString = (offset: number, value: string) => {
+    for (let index = 0; index < value.length; index += 1) {
+      view.setUint8(offset + index, value.charCodeAt(index));
+    }
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, buffer.byteLength - 8, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, SAMPLE_RATE, true);
+  view.setUint32(28, SAMPLE_RATE * bytesPerSample, true);
+  view.setUint16(32, bytesPerSample, true);
+  view.setUint16(34, bytesPerSample * 8, true);
+  writeString(36, "data");
+  view.setUint32(40, samples.length * bytesPerSample, true);
+
+  for (let index = 0; index < samples.length; index += 1) {
+    const sample = Math.max(-1, Math.min(1, samples[index]));
+    view.setInt16(
+      headerSize + index * bytesPerSample,
+      sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+      true,
+    );
+  }
+
+  return new Blob([buffer], { type: "audio/wav" });
+}
 
 class TranscriptionService {
-    static task = 'automatic-speech-recognition';
-    static model = 'onnx-community/whisper-small';
-    static instance: any = null;
+  static async transcribe(audio: Float32Array): Promise<string> {
+    const formData = new FormData();
+    formData.append("audio", encodeWav(audio), "recording.wav");
 
-    static async getInstance(progress_callback: ((progress: any) => void) | null = null) {
-        if (this.instance === null) {
-            const adapter = await navigator?.gpu?.requestAdapter();
-            const device  = adapter ? 'webgpu' : 'wasm';
+    const response = await fetch("/api/transcribe", {
+      method: "POST",
+      body: formData,
+    });
 
-            console.log(`[TranscriptionService] device=${device}`);
-
-            this.instance = await pipeline(this.task as any, this.model, {
-                device,
-                dtype: {
-                    encoder_model: 'fp32',        
-                    decoder_model_merged: 'fp32',     
-                },                                  
-                progress_callback: progress_callback || undefined,
-            } as any);
-        }
-        return this.instance;
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(
+        `Transcription request failed (${response.status}): ${details || response.statusText}`,
+      );
     }
 
-    static async transcribe(
-        audio: any,
-        progress_callback: ((progress: any) => void) | null = null
-    ): Promise<string> {
-        const transcriber = await this.getInstance(progress_callback);
-
-        const start = performance.now();
-
-        const output = await transcriber(audio, {
-            chunk_length_s: 10,         
-            stride_length_s: 2,         
-            language: 'french',
-            task: 'transcribe',
-            return_timestamps: false,   
-            num_beams: 5,               
-            temperature: 0, 
-            repetition_penalty: 1.3,
-            no_repeat_ngram_size: 3,
-        });
-
-        console.log(`[Latence] ${((performance.now() - start) / 1000).toFixed(2)}s`);
-
-        return typeof output === 'string' ? output : (output as any).text;
-    }
+    return response.text();
+  }
 }
 
 export default TranscriptionService;
