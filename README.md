@@ -42,23 +42,33 @@ Le projet est divisé en deux parties principales :
 ### Backend
 
 1. Clonez le dépôt.
-2. Téléchargez le modèle Whisper puis construisez et lancez PostgreSQL et le serveur de transcription avec Docker Compose :
+2. Lancez PostgreSQL avec Docker Compose :
    ```bash
    cd backend
+   docker compose up -d postgres
+   ```
+
+3. Installez whisper.cpp, téléchargez le modèle `small` et lancez son serveur natif dans un terminal dédié :
+   ```bash
+   brew install whisper.cpp
    mkdir -p models
    curl -fL \
-     https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin \
-     -o models/ggml-base-q5_1.bin
-   docker compose up -d --build
+     https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin \
+     -o models/ggml-small-q5_1.bin
+   whisper-server \
+     --host 127.0.0.1 \
+     --port 8081 \
+     --language fr \
+     --model "$PWD/models/ggml-small-q5_1.bin"
    ```
 
 ### Service de transcription Whisper
 
-Docker Compose construit le serveur HTTP whisper.cpp depuis sa version officielle `v1.9.4`, puis démarre le service. Le modèle doit être présent dans `backend/models/ggml-base-q5_1.bin`, monté en lecture seule dans le conteneur. Le modèle `ggml-base-q5_1.bin` est multilingue (français inclus) et pèse environ 60 Mo. La compilation désactive les optimisations spécifiques à la machine de build afin d’éviter les instructions CPU indisponibles dans l’environnement Linux du conteneur.
+Le serveur whisper.cpp est exécuté nativement sur macOS et écoute sur `http://localhost:8081`. Le modèle `ggml-small-q5_1.bin` est multilingue (français inclus) et pèse environ 190 Mo. Il est plus précis que `base`, mais demande davantage de mémoire et de temps de calcul.
 
 Le backend Java relaie les enregistrements WAV au service sur `http://localhost:8081`. Le port du service Whisper est publié uniquement sur l’interface locale de la machine ; le navigateur communique avec l’API Java, pas directement avec Whisper. Si le serveur Whisper est hébergé ailleurs, configurez `WHISPER_BASE_URL`.
 
-Le navigateur envoie l’enregistrement lorsque le détecteur de silence termine ; aucun modèle de transcription n’est chargé côté navigateur. Sur macOS avec Apple Silicon, le conteneur Linux Docker utilise le CPU et n’accède pas à Metal. Si la performance est insuffisante, l’installation native de whisper.cpp peut exploiter Metal.
+Le navigateur envoie l’enregistrement lorsque le détecteur de silence termine ; aucun modèle de transcription n’est chargé côté navigateur. L’installation native Homebrew peut exploiter Metal sur Apple Silicon. Le backend Java continue à relayer les enregistrements à `http://localhost:8081`; configurez `WHISPER_BASE_URL` si le serveur est lancé à une autre adresse.
 
 ### 🗓️ Configuration Google Calendar API
 
@@ -118,6 +128,12 @@ Depuis le dossier `frontend`, installez les dépendances et lancez le serveur :
    pnpm install
    npm run dev
    ```
+
+### Accès local avec Bonjour
+
+Le nom Bonjour actuel de ce Mac est `MacBook-Pro-de-david.local`. Depuis un appareil sur le même réseau, lancez le frontend avec `pnpm dev` et ouvrez `https://macbook-pro-de-david.local:5173` au lieu de saisir l’adresse IP. Vite autorise ce nom.
+
+Pour utiliser un nom plus court, remplacez le nom local du Mac par `jacob` dans **Réglages Système > Général > Partage** ; il sera alors accessible sous `jacob.local` (également autorisé par Vite). Bonjour résout le nom vers l’adresse IP courante du Mac : aucune réservation DHCP ni entrée DNS dans le routeur n’est nécessaire. La résolution du nom et la confiance HTTPS sont indépendantes.
 
 ## 📂 Structure du Projet
 

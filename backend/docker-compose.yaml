@@ -15,28 +15,6 @@ services:
       - postgres
     restart: unless-stopped
 
-  whisper:
-    container_name: jacob-whisper
-    build:
-      context: ./whisper
-      dockerfile: Dockerfile
-    image: jacob-whisper:local
-    entrypoint: [whisper-server]
-    command:
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8080"
-      - --language
-      - fr
-      - --model
-      - /models/ggml-base-q5_1.bin
-    volumes:
-      - ./models:/models:ro
-    ports:
-      - 127.0.0.1:8081:8080
-    restart: unless-stopped
-
 networks:
   postgres:
     driver: bridge

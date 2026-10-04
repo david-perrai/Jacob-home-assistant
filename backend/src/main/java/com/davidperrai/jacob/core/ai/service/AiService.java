@@ -7,6 +7,7 @@ import java.util.Locale;
 import org.springframework.stereotype.Service;
 
 import com.davidperrai.jacob.configuration.AssistantInterface;
+import com.davidperrai.jacob.core.googlecalendar.agent.GoogleCalendarTool;
 import com.davidperrai.jacob.core.googlemap.agent.DirectoryEntryTool;
 import com.davidperrai.jacob.core.netatmo.agent.NetatmoTool;
 import com.davidperrai.jacob.core.shoppinglist.agent.ShoppingListTool;
@@ -24,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 public class AiService {
 
    private final OllamaChatModel model;
+   private final GoogleCalendarTool googleCalendarTool;
    private final ShoppingListTool shoppingListTool;
    private final DirectoryEntryTool directoryEntryTool;
    private final WeatherTool weatherTool;
@@ -37,7 +39,7 @@ public class AiService {
       // Build assistant with all components
       assistant = AiServices.builder(AssistantInterface.class)
             .chatModel(model)
-            .tools(shoppingListTool, directoryEntryTool, weatherTool, netatmoTool)
+            .tools(googleCalendarTool, shoppingListTool, directoryEntryTool, weatherTool, netatmoTool)
             .build();
 
       log.info("AI Service initialized successfully");

@@ -5,6 +5,7 @@ const TARGET_SAMPLE_RATE = 16000;
 export function useAudioRecorder(onSilenceDetected?: () => void) {
     const [isRecording, setIsRecording] = useState(false);
     const [audioData, setAudioData] = useState<Float32Array | null>(null);
+    const [recordingError, setRecordingError] = useState<string | null>(null);
 
     const audioContextRef = useRef<AudioContext | null>(null);
     const workletNodeRef  = useRef<AudioWorkletNode | null>(null);
@@ -35,6 +36,7 @@ export function useAudioRecorder(onSilenceDetected?: () => void) {
 
         workletNodeRef.current  = null;
         sourceRef.current       = null;
+        streamRef.current       = null;
         audioContextRef.current = null;
 
         flush();
@@ -42,6 +44,22 @@ export function useAudioRecorder(onSilenceDetected?: () => void) {
     }, [flush]);
 
     const startRecording = useCallback(async () => {
+        setRecordingError(null);
+
+        if (!window.isSecureContext) {
+            setRecordingError(
+                "Safari bloque l'accès au micro sur cette adresse HTTP. Ouvrez l'application en HTTPS pour utiliser la dictée.",
+            );
+            return;
+        }
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+            setRecordingError(
+                "L'accès au micro n'est pas disponible dans ce navigateur. Vérifiez les permissions du site ou utilisez un navigateur à jour.",
+            );
+            return;
+        }
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
@@ -86,8 +104,29 @@ export function useAudioRecorder(onSilenceDetected?: () => void) {
 
         } catch (err) {
             console.error('Erreur microphone:', err);
+            workletNodeRef.current?.disconnect();
+            sourceRef.current?.disconnect();
+            streamRef.current?.getTracks().forEach(track => track.stop());
+            void audioContextRef.current?.close();
+
+            workletNodeRef.current = null;
+            sourceRef.current = null;
+            streamRef.current = null;
+            audioContextRef.current = null;
+
+            if (err instanceof DOMException && err.name === "NotAllowedError") {
+                setRecordingError(
+                    "L'accès au micro a été refusé. Autorisez le micro pour ce site dans les réglages de Safari, puis réessayez.",
+                );
+            } else if (err instanceof DOMException && err.name === "NotFoundError") {
+                setRecordingError("Aucun microphone n'a été détecté sur cet appareil.");
+            } else if (err instanceof Error) {
+                setRecordingError(`Impossible de démarrer le micro : ${err.message}`);
+            } else {
+                setRecordingError("Impossible de démarrer le micro. Vérifiez les réglages de Safari.");
+            }
         }
     }, [stopRecording, onSilenceDetected]);
 
-    return { isRecording, audioData, startRecording, stopRecording };
+    return { isRecording, audioData, recordingError, startRecording, stopRecording };
 }

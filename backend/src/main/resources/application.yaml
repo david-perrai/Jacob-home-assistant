@@ -21,7 +21,7 @@ spring:
         format_sql: true
 ollama:
   base-url: http://localhost:11434
-  model-name: gemma4:e4b
+  model-name: gemma4:e2b
   embedding-model: nomic-embed-text
 
 rag:

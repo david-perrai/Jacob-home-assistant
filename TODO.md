@@ -1,0 +1,14 @@
+- [] créer un certificat auto signé avec une url local
+- [] gérer le démarrage du serveur whispper au démarrage de l'application springboot
+- [] revue graphique de l'ihm 
+    - [] liste de courses
+    - [] météo
+    - [] événement sous format de calendrier plus grand
+- [] explorer l'api d'agenda google 
+    - [] recherche d'événements
+    - [] recherche d'emails
+    - [] workflow sur emails reçus
+- [] Manipulation de la télévision : 
+    - [] créer un web serveur en fastify pour gérer les appels
+    - [] intégrer dans un service et un tool et la manipulations de la TV
+- [] monter une base vectoriel

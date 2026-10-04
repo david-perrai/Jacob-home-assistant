@@ -45,7 +45,7 @@ const Weather: React.FC = () => {
 
       try {
         const response = await fetch(
-          `http://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city}&days=3&lang=fr`
+          `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city}&days=3&lang=fr`
         );
         if (!response.ok) throw new Error('Erreur réseau');
         const data = await response.json();
