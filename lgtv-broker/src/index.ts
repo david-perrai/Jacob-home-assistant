@@ -1,36 +1,36 @@
-import Fastify from 'fastify';
+import { config } from "dotenv";
+import Fastify from "fastify";
+import { registerTvController } from "./controllers/tvController";
+import { TvService } from "./services/tvService";
+
+config();
 
 const fastify = Fastify({ logger: true });
+const tvService = new TvService(
+  process.env.LGTV_URL ?? "ws://lgwebostv:3000",
+  {
+    error: (error) => {
+      fastify.log.error({ err: error }, "Erreur de connexion au téléviseur LG");
+    },
+    warn: (message) => {
+      fastify.log.warn(message);
+    },
+  },
+);
 
-const validCommands = [
-  'pause',
-  'play',
-  'turnoff',
-  'volumePlus',
-  'volumeMinus',
-  'mute'
-] as const;
+registerTvController(fastify, tvService);
 
-type Command = typeof validCommands[number];
-
-interface CommandBody {
-  command: Command;
-}
-
-fastify.post<{ Body: CommandBody }>('/command', async (request, reply) => {
-  const { command } = request.body;
-
-  if (!validCommands.includes(command)) {
-    return reply.status(400).send({ error: 'Commande invalide' });
-  }
-
-  return { status: 'ok', command };
+fastify.addHook("onClose", async () => {
+  tvService.disconnect();
 });
 
 const start = async () => {
   try {
-    await fastify.listen({ port: 3000, host: '0.0.0.0' });
-    fastify.log.info('Server running on http://localhost:3000');
+    await fastify.listen({
+      port: Number(process.env.PORT ?? 3000),
+      host: process.env.HOST ?? "0.0.0.0",
+    });
+    fastify.log.info("Broker LG TV démarré");
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

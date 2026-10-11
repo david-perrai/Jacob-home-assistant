@@ -1,7 +1,7 @@
 services:
   postgres:
     container_name: jacob-postgres
-    image: postgres
+    image: pgvector/pgvector:pg18
     environment:
       POSTGRES_DB: jacob
       POSTGRES_USER: jacob

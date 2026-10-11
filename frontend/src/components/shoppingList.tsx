@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ShoppingListApi from "../api/ShoppingListApi";
 import { ShoppingItem } from "../api/types/ShoppingItem";
 
@@ -30,6 +30,7 @@ export default function ShoppingList({ sseEventSource }: ShoppingListProps) {
     if (!sseEventSource) return;
 
     const handler = (event: MessageEvent) => {
+
       try {
         const data = JSON.parse(event.data);
         if (["ShoppingList.add", "ShoppingList.delete"].includes(data.type)) {
@@ -60,7 +61,7 @@ export default function ShoppingList({ sseEventSource }: ShoppingListProps) {
         {shoppingList.length > 0 ? (
           shoppingList.map((item) => (
             <li key={item.id}>
-              <span>🛒</span> {item.name}{" "}
+              {item.name}{" "}
               {item.quantity > 1 && `(x${item.quantity})`}
             </li>
           ))

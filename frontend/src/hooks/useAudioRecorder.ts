@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 const TARGET_SAMPLE_RATE = 16000;
 
@@ -65,7 +65,7 @@ export function useAudioRecorder(onSilenceDetected?: () => void) {
                 audio: {
                     sampleRate: TARGET_SAMPLE_RATE,
                     channelCount: 1,
-                    echoCancellation: true,
+                    // echoCancellation: true,
                     noiseSuppression: true,
                     autoGainControl: true,
                 }

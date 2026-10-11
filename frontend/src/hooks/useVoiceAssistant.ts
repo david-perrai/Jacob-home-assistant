@@ -21,11 +21,37 @@ export function useVoiceAssistant() {
     transcription,
     sttStatus,
     transcribe,
+    setTranscription,
     clearTranscription,
   } = useTranscription();
   const { speak, unlock, speechError } = useTextToSpeech();
   const [isThinking, setIsThinking] = useState(false);
   const [promptError, setPromptError] = useState<string | null>(null);
+  const [requestVersion, setRequestVersion] = useState(0);
+
+  const submitPrompt = useCallback(
+    async (text: string): Promise<boolean> => {
+      const request = text.trim();
+      if (!request) return false;
+
+      setTranscription(request);
+      setRequestVersion((version) => version + 1);
+      setPromptError(null);
+      setIsThinking(true);
+      try {
+        const response = await aiApi.prompt(request);
+        speak(response);
+        return true;
+      } catch (error) {
+        console.error("Erreur lors de la demande à l'IA :", error);
+        setPromptError("Impossible d'obtenir une réponse de l'IA. Réessayez.");
+        return false;
+      } finally {
+        setIsThinking(false);
+      }
+    },
+    [setTranscription, speak],
+  );
 
   // À la fin de l'enregistrement, transcrire puis demander une réponse à l'IA.
   useEffect(() => {
@@ -35,21 +61,11 @@ export function useVoiceAssistant() {
       const text = await transcribe(audioData);
       if (!text) return;
 
-      setIsThinking(true);
-      setPromptError(null);
-      try {
-        const response = await aiApi.prompt(text);
-        speak(response);
-      } catch (error) {
-        console.error("Erreur lors de la demande à l'IA :", error);
-        setPromptError("Impossible d'obtenir une réponse de l'IA. Réessayez.");
-      } finally {
-        setIsThinking(false);
-      }
+      await submitPrompt(text);
     };
 
     void processRequest();
-  }, [audioData, transcribe, speak]);
+  }, [audioData, transcribe, submitPrompt]);
 
   const toggleRecording = useCallback(() => {
     if (isRecording) {
@@ -63,6 +79,14 @@ export function useVoiceAssistant() {
     void startRecording();
   }, [isRecording, stopRecording, clearTranscription, startRecording, unlock]);
 
+  const submitTextPrompt = useCallback(
+    (text: string) => {
+      unlock();
+      return submitPrompt(text);
+    },
+    [submitPrompt, unlock],
+  );
+
   return {
     isRecording,
     recordingError,
@@ -72,5 +96,7 @@ export function useVoiceAssistant() {
     sttStatus,
     isThinking,
     toggleRecording,
+    submitTextPrompt,
+    requestVersion,
   };
 }

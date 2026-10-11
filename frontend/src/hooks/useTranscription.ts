@@ -29,6 +29,7 @@ export function useTranscription() {
     transcription,
     sttStatus,
     transcribe,
+    setTranscription,
     clearTranscription,
   };
 }

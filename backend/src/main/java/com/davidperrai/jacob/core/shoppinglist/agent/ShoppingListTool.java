@@ -27,17 +27,18 @@ public class ShoppingListTool {
     private final SseService sseService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+
     @Tool("""
             Récupère le contenu actuel de la liste de courses.
             À utiliser pour savoir ce qui est déjà présent dans la liste.
             """)
-    public Response findAll() {
+    public Response getAllItemFromShoppingList() {
         List<ShoppingList> shoppingLists = shoppingListService.findAllShoppingList();
         return new Response("voici la liste de courses", shoppingLists);
     }
 
     @Tool("Ajoute des articles à la liste de courses.")
-    public Response createShoppingList(
+    public Response addItemToShoppingList(
             @P("The list of items as a JSON string. Example: '[{\"name\": \"riz\", \"quantity\": 1}]'") String items) {
         try {
             log.info("Ajout d'articles à la liste de courses: {}", items);
@@ -58,14 +59,14 @@ public class ShoppingListTool {
     }
 
     @Tool("""
-            Supprime TOUS les articles de la liste de courses (la vide entièrement).
-            À utiliser pour les commandes comme "vide la liste", "supprime tout", "efface ma liste".
-            Appelez cet outil même si vous pensez que la liste peut être vide pour confirmer l'action à l'utilisateur.
-            """)
-    public Response deleteShoppingList() {
-        log.info("Suppression de la liste de courses");
+        Vide entièrement la liste de courses : supprime tous les articles d'un coup.
+        À utiliser lorsque l'utilisateur demande de supprimer, effacer, vider
+        ou réinitialiser la liste de courses.
+    """)
+    public Response clearShoppingList() {            
         shoppingListService.deleteShoppingList();
         sseService.sendEvent("shoppingList", Map.of("data", "", "type", "ShoppingList.delete"));
         return new Response("la liste de courses a bien été supprimée", null);
     }
+
 }

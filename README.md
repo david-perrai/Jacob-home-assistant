@@ -5,11 +5,14 @@ Jacob est un assistant personnel intelligent conçu pour centraliser et simplifi
 ## 🚀 Fonctionnalités
 
 - **Intelligence Artificielle** : Intégration de LLMs via Ollama pour répondre à vos requêtes de manière naturelle.
-- **Interaction Vocale** : Enregistrement déclenché depuis l'interface, transcription de la parole en texte et réponse vocale.
+- **Mémoire de conversation** : Jacob conserve les 10 derniers messages en mémoire vive afin de comprendre les questions de suivi. Cette mémoire est commune aux prompts et est réinitialisée au redémarrage du backend.
+- **Interaction Vocale et écrite** : Enregistrement déclenché depuis l'interface, transcription de la parole en texte et réponse vocale ; les demandes écrites sont envoyées depuis une fenêtre dédiée.
 - **Gestion d'Agenda** : Synchronisation et affichage des événements Google Calendar.
 - **Météo en Temps Réel** : Prévisions météorologiques locales avec une vue sur 3 jours.
 - **Liste de Courses** : Gestion intuitive de vos listes de courses via des commandes vocales ou textuelles.
+- **Pilotage TV** : Commandes vocales et textuelles du téléviseur LG WebOS via le broker `lgtv-broker`.
 - **Notifications SSE** : Mises à jour en direct du frontend via Server-Sent Events depuis le backend.
+- **Base documentaire RAG** : Import de documents PDF et TXT depuis le bouton flottant ; leur texte est découpé, vectorisé par Ollama et stocké dans PostgreSQL avec pgVector.
 
 ## 🛠️ Architecture Technique
 
@@ -48,27 +51,47 @@ Le projet est divisé en deux parties principales :
    docker compose up -d postgres
    ```
 
-3. Installez whisper.cpp, téléchargez le modèle `small` et lancez son serveur natif dans un terminal dédié :
+3. Installez whisper.cpp et téléchargez le modèle `small` depuis le dossier `backend` :
    ```bash
+   cd backend
    brew install whisper.cpp
    mkdir -p models
    curl -fL \
      https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin \
      -o models/ggml-small-q5_1.bin
-   whisper-server \
-     --host 127.0.0.1 \
-     --port 8081 \
-     --language fr \
-     --model "$PWD/models/ggml-small-q5_1.bin"
    ```
+
+Pour importer des documents RAG, installez également le modèle d'embeddings puis
+utilisez le bouton d'import flottant dans l'interface :
+
+```bash
+ollama pull nomic-embed-text
+```
+
+L'API d'import est `POST /rag/documents` avec un champ multipart `file`. Les
+fichiers PDF et TXT sont acceptés ; ils sont découpés selon `rag.chunk-size` et
+`rag.chunk-overlap` dans `backend/src/main/resources/application.yaml`, puis
+indexés dans la table `jacob_embeddings` de PostgreSQL. Lors d'une conversation,
+Jacob recherche les passages documentaires pertinents selon `rag.max-results`
+et `rag.min-score` et les ajoute au contexte de réponse.
 
 ### Service de transcription Whisper
 
-Le serveur whisper.cpp est exécuté nativement sur macOS et écoute sur `http://localhost:8081`. Le modèle `ggml-small-q5_1.bin` est multilingue (français inclus) et pèse environ 190 Mo. Il est plus précis que `base`, mais demande davantage de mémoire et de temps de calcul.
+Au démarrage du backend Java, `whisper-server` est lancé automatiquement sur `127.0.0.1:8081` avec le modèle `ggml-small-q5_1.bin` situé dans `backend/models/`. À l’arrêt du backend, son processus est arrêté également. Le modèle est recherché dans `models/` depuis le dossier de lancement Java ; s’il est lancé depuis la racine du dépôt, il est aussi recherché dans `backend/models/`. Le modèle est multilingue (français inclus) et pèse environ 190 Mo. Il est plus précis que `base`, mais demande davantage de mémoire et de temps de calcul.
 
 Le backend Java relaie les enregistrements WAV au service sur `http://localhost:8081`. Le port du service Whisper est publié uniquement sur l’interface locale de la machine ; le navigateur communique avec l’API Java, pas directement avec Whisper. Si le serveur Whisper est hébergé ailleurs, configurez `WHISPER_BASE_URL`.
 
+Le démarrage automatique peut être désactivé avec `WHISPER_SERVER_ENABLED=false`. Vous pouvez aussi définir `WHISPER_SERVER_EXECUTABLE` (par défaut `whisper-server`) et `WHISPER_MODEL_PATH` (par défaut `models/ggml-small-q5_1.bin`, relatif au dossier de lancement Java). Si Whisper est hébergé ailleurs, configurez `WHISPER_BASE_URL` et désactivez le démarrage automatique.
+
 Le navigateur envoie l’enregistrement lorsque le détecteur de silence termine ; aucun modèle de transcription n’est chargé côté navigateur. L’installation native Homebrew peut exploiter Metal sur Apple Silicon. Le backend Java continue à relayer les enregistrements à `http://localhost:8081`; configurez `WHISPER_BASE_URL` si le serveur est lancé à une autre adresse.
+
+### Pilotage du téléviseur LG
+
+Démarrez `lgtv-broker` et configurez l'URL HTTP du broker pour le backend avec
+`LGTV_BROKER_URL` (par défaut `http://localhost:3000`). Le broker doit lui-même
+être configuré avec l'adresse WebSocket du téléviseur dans son fichier `.env`.
+Jacob peut mettre en pause ou reprendre la lecture, ajuster le volume, basculer
+le mode muet et éteindre le téléviseur à la demande.
 
 ### 🗓️ Configuration Google Calendar API
 

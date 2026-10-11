@@ -1,6 +1,6 @@
 
 const lgtv = require("lgtv2")({
-    url: 'ws://192.168.1.83:3000'
+    url: 'ws://192.168.1.82:3000'
 });
 
 const readline = require('readline');
@@ -46,8 +46,8 @@ lgtv.on('connect', async function () {
                 console.log('✓ Lecture en cours');
             } else if (lowerCommand === 'pause') {   
                 // lgtv.request('ssap://system.notifications/createToast', {message: "Je t'aime mon amour mais il ne serait pas temps d'aller faire dodo ?"})             
-                lgtv.request('ssap://system/turnOff');
-                // const response = await request('ssap://media.controls/pause');
+                // lgtv.request('ssap://system/turnOff');
+                lgtv.request('ssap://media.controls/pause');
                 console.log('✓ Pause activée');
             } else {
                 console.log('❌ Commande invalide. Entrez "play" ou "pause"');
