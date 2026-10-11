@@ -29,7 +29,7 @@ tokens-calendar-events/*
 
 client_secret.json
 
-*/**/application.yml
+backend/**/application.yaml
 
 
 # Environment files
