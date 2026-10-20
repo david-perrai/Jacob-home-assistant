@@ -29,8 +29,12 @@ public class ShoppingListService {
         return shoppingList;
     }
 
-    public void deleteShoppingList() {
+    public void deleteAllShoppingItems() {
         shoppingListRepository.deleteAll();
+    }
+
+    public void deleteShoppingList(Long id) {
+        shoppingListRepository.deleteById(id);
     }
 
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type TouchEvent } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -6,7 +6,7 @@ import listPlugin from "@fullcalendar/list";
 import frLocale from "@fullcalendar/core/locales/fr";
 import type { DatesSetArg } from "@fullcalendar/core";
 
-interface CalendarEvent {
+export interface CalendarEvent {
   id: string;
   summary: string;
   start: {
@@ -48,10 +48,24 @@ function toCalendarEvent(event: CalendarEvent) {
   };
 }
 
-export function Agenda() {
+interface AgendaProps {
+  showHeading?: boolean;
+  dailyNavigation?: boolean;
+}
+
+export function Agenda({
+  showHeading = true,
+  dailyNavigation = false,
+}: AgendaProps = {}) {
+  const calendarRef = useRef<FullCalendar | null>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isToday, setIsToday] = useState(true);
+  const [slideDirection, setSlideDirection] = useState<
+    "previous" | "next" | null
+  >(null);
   const [month, setMonth] = useState(() => {
     const currentDate = new Date();
     return `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
@@ -62,10 +76,9 @@ export function Agenda() {
 
     const fetchEvents = async () => {
       try {
-        const response = await fetch(
-          `/api/calendar/events?month=${month}`,
-          { signal: abortController.signal },
-        );
+        const response = await fetch(`/api/calendar/events?month=${month}`, {
+          signal: abortController.signal,
+        });
         if (!response.ok) {
           throw new Error("Erreur lors de la récupération de l'agenda");
         }
@@ -94,32 +107,140 @@ export function Agenda() {
     setMonth(
       `${currentStart.getFullYear()}-${String(currentStart.getMonth() + 1).padStart(2, "0")}`,
     );
+    if (dailyNavigation) {
+      const today = new Date();
+      setIsToday(
+        currentStart.getFullYear() === today.getFullYear() &&
+          currentStart.getMonth() === today.getMonth() &&
+          currentStart.getDate() === today.getDate(),
+      );
+    }
+  };
+
+  const animateNavigation = (
+    direction: "previous" | "next",
+    navigate: () => void,
+  ) => {
+    setSlideDirection(direction);
+    navigate();
+    window.setTimeout(() => setSlideDirection(null), 280);
+  };
+
+  const navigateDay = (direction: "previous" | "next") => {
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
+
+    animateNavigation(direction, () => {
+      if (direction === "previous") calendarApi.prev();
+      else calendarApi.next();
+    });
+  };
+
+  const returnToToday = () => {
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
+
+    const direction =
+      localDateString(calendarApi.getDate().getTime()) <
+      localDateString(Date.now())
+        ? "next"
+        : "previous";
+    animateNavigation(direction, () => calendarApi.today());
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (!dailyNavigation || event.touches.length !== 1) {
+      touchStart.current = null;
+      return;
+    }
+
+    const touch = event.touches[0];
+    touchStart.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start || event.changedTouches.length !== 1) return;
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 55 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) {
+      return;
+    }
+
+    navigateDay(deltaX > 0 ? "previous" : "next");
   };
 
   return (
     <>
-      <div className="card-header">
-        <span className="icon">📅</span>
-        <h2>Agenda</h2>
-      </div>
+      {showHeading && (
+        <div className="card-header">
+          <span className="icon">📅</span>
+          <h2>Agenda</h2>
+        </div>
+      )}
       {loading ? (
         <div className="agenda-status">Chargement de l'agenda...</div>
       ) : error ? (
         <div className="agenda-status error-text">{error}</div>
       ) : (
-        <div className="agenda-calendar">
+        <div
+          className={[
+            "agenda-calendar",
+            dailyNavigation && "agenda-calendar-daily",
+            dailyNavigation && isToday && "agenda-calendar-today",
+            slideDirection && `agenda-calendar-slide-${slideDirection}`,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           <FullCalendar
+            ref={calendarRef}
             plugins={[dayGridPlugin, interactionPlugin, listPlugin]}
-            initialView="dayGridMonth"
+            initialView={dailyNavigation ? "dayGridDay" : "dayGridMonth"}
             locale={frLocale}
-            headerToolbar={{
-              left: "prev,next today",
-              center: "title",
-              right: "dayGridMonth,listMonth",
-            }}
+            headerToolbar={
+              dailyNavigation
+                ? {
+                    left: "previousDay,nextDay",
+                    center: "title",
+                    right: "returnToToday,dayGridDay,listDay",
+                  }
+                : {
+                    left: "prev,next today",
+                    center: "title",
+                    right: "dayGridMonth,listMonth",
+                  }
+            }
+            customButtons={
+              dailyNavigation
+                ? {
+                    previousDay: {
+                      text: "‹",
+                      hint: "Jour précédent",
+                      click: () => navigateDay("previous"),
+                    },
+                    nextDay: {
+                      text: "›",
+                      hint: "Jour suivant",
+                      click: () => navigateDay("next"),
+                    },
+                    returnToToday: {
+                      text: "Aujourd'hui",
+                      click: returnToToday,
+                    },
+                  }
+                : undefined
+            }
             views={{
               dayGridMonth: { buttonText: "Mois" },
+              dayGridDay: { buttonText: "Jour" },
               listMonth: { buttonText: "Liste" },
+              listDay: { buttonText: "Liste" },
             }}
             events={events.flatMap((event) => {
               const calendarEvent = toCalendarEvent(event);

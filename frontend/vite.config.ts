@@ -1,11 +1,11 @@
+import basicSsl from '@vitejs/plugin-basic-ssl'
+import react from '@vitejs/plugin-react'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import basicSsl from '@vitejs/plugin-basic-ssl'
 
-const certificatePath = fileURLToPath(new URL('./certs/jacob.home.arpa.crt', import.meta.url))
-const privateKeyPath = fileURLToPath(new URL('./certs/jacob.home.arpa.key', import.meta.url))
+const certificatePath = fileURLToPath(new URL('./certs/jacob.local+1.pem', import.meta.url))
+const privateKeyPath = fileURLToPath(new URL('./certs/jacob.local+1-key.pem', import.meta.url))
 const hasCertificate = existsSync(certificatePath)
 const hasPrivateKey = existsSync(privateKeyPath)
 
@@ -25,7 +25,7 @@ export default defineConfig({
   plugins: [react(), ...(!localCertificate ? [basicSsl()] : [])],
   server: {
     https: localCertificate ?? {},
-    allowedHosts: ['jacob.local', 'macbook-pro-de-david.local'],
+    allowedHosts: ['jacob.local'],
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

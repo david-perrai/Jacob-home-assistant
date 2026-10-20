@@ -30,6 +30,7 @@ tokens-calendar-events/*
 client_secret.json
 
 application.yaml
+.playwright-mcp
 
 
 # Environment files

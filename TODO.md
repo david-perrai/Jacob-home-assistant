@@ -1,17 +1,22 @@
 - [] Ajouter le traitement des recettes de cuisine
     - [] Déclaration d'une recette vocalement
-    - [] Extraction d'une recette à partir d'un lien internet  
-        - [] créer un tool qui face utiliser le mcp serveur playwright en mode headless pour extraire les informations et pour que le modèle réinjecte le contenu dans un tool de création de recette
-    - [] 
+    - [x] Extraction d'une recette à partir d'un lien internet  
+        - [x] créer un tool qui face utiliser le mcp serveur playwright en mode headless pour extraire les informations et pour que le modèle réinjecte le contenu dans un tool de création de recette        
+    - [x] Ajouter la catégorisation de recette (plat, entrée, dessert,apéritif)
 
-- [] Créer d'un mcp de manipulation automatique de jacob pour remplacer les web sockets (ie: basculement d'onglet)
+- [] revoir l'icone du site
 
-- [] revue graphique de l'ihm 
-    - [] liste de courses
-    - [] météo
-    - [] événement sous format de calendrier plus grand
+- [] Liste de Todo 
+
+- [] Corriger 
+
+    
+- [] demander l'extraction des ingrédients d'une recette pour les positionner dans la liste de course.
+    - [] modifier pour prendre en comptes des quantités autre qu'un nombre (grammes, kilo etc...)
+
+
 - [] explorer l'api d'agenda google 
-    - [] recherche d'événements (sur un mois)
+    - [x] recherche d'événements (sur un mois)
     - [] recherche d'emails
     - [] workflow sur emails reçus
 - [] modulariser Jacob pour charger dynamiquement des fonctions (ie: tv, agenda etc..)
@@ -27,3 +32,8 @@ DONE
     - [x] intégrer dans un service et un tool et la manipulations de la TV
 - [x] monter une base vectoriel avec des documents pour les exploités
 
+- [x] revue graphique de l'ihm 
+    - [x] liste de courses
+    - [x] météo
+
+- [x] Gérer une recherche par embedding avec le model bg3-m3 pour le model d'embedding. 

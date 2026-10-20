@@ -15,12 +15,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class ShoppingListTool {
 
     private final ShoppingListService shoppingListService;
@@ -63,8 +63,8 @@ public class ShoppingListTool {
         À utiliser lorsque l'utilisateur demande de supprimer, effacer, vider
         ou réinitialiser la liste de courses.
     """)
-    public Response clearShoppingList() {            
-        shoppingListService.deleteShoppingList();
+    public Response deleteShoppingList() {            
+        shoppingListService.deleteAllShoppingItems();
         sseService.sendEvent("shoppingList", Map.of("data", "", "type", "ShoppingList.delete"));
         return new Response("la liste de courses a bien été supprimée", null);
     }

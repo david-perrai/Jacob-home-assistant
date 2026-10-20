@@ -1,23 +1,20 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import { Alert, Box, Container, Paper, Typography } from "@mui/material";
 import {
-  AppBar,
-  Alert,
-  Box,
-  Chip,
-  Container,
-  LinearProgress,
-  Paper,
-  Stack,
-  Toolbar,
-  Typography,
-} from "@mui/material";
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import AssistantSpeedDial from "./components/AssistantSpeedDial";
+import EventTimeline from "./components/EventTimeline";
 import GoogleMap from "./components/googleMap";
-import AssistantFab from "./components/AssistantFab";
-import DocumentUploadFab from "./components/DocumentUploadFab";
-import TextPromptFab from "./components/TextPromptFab";
 import IndoorTemp from "./components/IndoorTemp";
+import RecipesCard from "./components/RecipesCard";
 import ShoppingList from "./components/shoppingList";
-import TvStatusCard from "./components/TvStatusCard";
 import Weather from "./components/Weather";
 import { useSSE } from "./hooks/useSSE";
 import { useVoiceAssistant } from "./hooks/useVoiceAssistant";
@@ -33,128 +30,195 @@ function App() {
     speechError,
     promptError,
     transcription,
+    assistantResponse,
     sttStatus,
     isThinking,
     toggleRecording,
     submitTextPrompt,
-    requestVersion,
+    subscribeToAudioLevel,
   } = useVoiceAssistant();
 
   const eventSource = useSSE();
   const isBusy = sttStatus === "transcribing" || isThinking;
-  const [isTranscriptionVisible, setIsTranscriptionVisible] = useState(false);
-
-  useEffect(() => {
-    if (!transcription) {
-      setIsTranscriptionVisible(false);
+  const [activePage, setActivePage] = useState<"overview" | "agenda">(
+    "overview",
+  );
+  const [isVoicePanelOpen, setVoicePanelOpen] = useState(false);
+  const [isWaitingForRecording, setWaitingForRecording] = useState(false);
+  const lastTouchTapRef = useRef(0);
+  const recordingStartTimeoutRef = useRef<number | null>(null);
+  const recordingStateRef = useRef({ isRecording, isBusy });
+  recordingStateRef.current = { isRecording, isBusy };
+  const showVoicePanel = useCallback(() => setVoicePanelOpen(true), []);
+  const dismissVoicePanel = useCallback(() => {
+    if (recordingStartTimeoutRef.current !== null) {
+      window.clearTimeout(recordingStartTimeoutRef.current);
+      recordingStartTimeoutRef.current = null;
+    }
+    setWaitingForRecording(false);
+    setVoicePanelOpen(false);
+  }, []);
+  useEffect(
+    () => () => {
+      if (recordingStartTimeoutRef.current !== null) {
+        window.clearTimeout(recordingStartTimeoutRef.current);
+      }
+    },
+    [],
+  );
+  const activateVoiceAssistant = useCallback(() => {
+    setVoicePanelOpen(true);
+    if (
+      recordingStateRef.current.isRecording ||
+      recordingStateRef.current.isBusy ||
+      recordingStartTimeoutRef.current !== null
+    ) {
       return;
     }
 
-    setIsTranscriptionVisible(true);
-    const timeout = setTimeout(() => setIsTranscriptionVisible(false), 30_000);
-    return () => clearTimeout(timeout);
-  }, [transcription, requestVersion]);
-
-  const statusLabel = isRecording
-    ? "Je vous écoute"
-    : isThinking
-      ? "Réflexion…"
-      : sttStatus === "transcribing"
-        ? "Transcription en cours"
-        : sttStatus === "error"
-          ? "Transcription indisponible"
-          : "Prêt à vous écouter";
+    setWaitingForRecording(true);
+    recordingStartTimeoutRef.current = window.setTimeout(() => {
+      recordingStartTimeoutRef.current = null;
+      setWaitingForRecording(false);
+      if (
+        !recordingStateRef.current.isRecording &&
+        !recordingStateRef.current.isBusy
+      ) {
+        toggleRecording();
+      }
+    }, 1_000);
+  }, [toggleRecording]);
 
   return (
-    <Box className="dashboard-container">
-      <AppBar
-        position="sticky"
-        elevation={0}
-        color="transparent"
-        className={`ai-mini-header ${isRecording ? "recording" : ""}`}
-      >
-        <Toolbar className="assistant-toolbar" disableGutters>
-          <Stack
-            className="assistant-identity"
-            direction="row"
-            spacing={1}
-            sx={{ alignItems: "center" }}
-          >
-            <Typography component="h1" variant="h6" className="assistant-title">
-              Jacob
-            </Typography>
-            <Chip
-              size="small"
-              label={statusLabel}
-              color={
-                isRecording
-                  ? "error"
-                  : isThinking
-                    ? "info"
-                    : sttStatus === "error"
-                      ? "warning"
-                      : "success"
-              }
-              variant="outlined"
-            />
-          </Stack>
-          {transcription && isTranscriptionVisible && (
-            <Paper className="transcription-panel assistant-request" elevation={0}>
-              <Typography variant="overline" color="text.secondary">
-                Dernière demande
-              </Typography>
-              <Typography variant="body2" title={transcription} noWrap>
-                {transcription}
-              </Typography>
-            </Paper>
-          )}
-        </Toolbar>
-        {isBusy && <LinearProgress className="assistant-progress" />}
-      </AppBar>
-
-      <AssistantFab
-        isRecording={isRecording}
-        isBusy={isBusy}
-        onToggleRecording={toggleRecording}
-      />
-      <TextPromptFab
-        isBusy={isBusy}
-        error={promptError}
-        onSubmit={submitTextPrompt}
-      />
-      <DocumentUploadFab />
-
-      <Container maxWidth="xl" disableGutters className="dashboard-content">
-        {recordingError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {recordingError}
-          </Alert>
-        )}
-        {speechError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {speechError}
-          </Alert>
-        )}
-        {promptError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {promptError}
-          </Alert>
-        )}
-        <Box component="main" className="dashboard-grid">
-          <Weather />
-          <ShoppingList sseEventSource={eventSource} />
-          <Box className="device-stack">
-            <IndoorTemp sseEventSource={eventSource} />
-            <TvStatusCard />
-          </Box>
-          <Paper component="section" className="dashboard-card info-card" elevation={0}>
-            <Suspense fallback={<div className="agenda-status">Chargement de l'agenda...</div>}>
-              <Agenda />
-            </Suspense>
-          </Paper>
-          <GoogleMap sseEventSource={eventSource} />
+    <Box
+      className="dashboard-container"
+      onDoubleClick={() => {
+        if (Date.now() - lastTouchTapRef.current < 600) return;
+        activateVoiceAssistant();
+      }}
+      onTouchEnd={() => {
+        const now = Date.now();
+        if (now - lastTouchTapRef.current < 350) {
+          lastTouchTapRef.current = now;
+          activateVoiceAssistant();
+          return;
+        }
+        lastTouchTapRef.current = now;
+      }}
+    >
+      <Box component="aside" className="dashboard-sidebar">
+        <Box className="sidebar-brand">
+          <span className="sidebar-brand-mark" aria-hidden="true">
+            J
+          </span>
+          <Typography component="span" className="sidebar-brand-name">
+            Jacob
+          </Typography>
         </Box>
-      </Container>
+        <Box
+          component="nav"
+          aria-label="Navigation principale"
+          className="sidebar-nav"
+        >
+          <Box
+            component="button"
+            type="button"
+            aria-current={activePage === "overview" ? "page" : undefined}
+            className={`sidebar-nav-item${activePage === "overview" ? " active" : ""}`}
+            onClick={() => setActivePage("overview")}
+          >
+            <HomeRoundedIcon aria-hidden="true" />
+            <span>Vue d’ensemble</span>
+          </Box>
+          <Box
+            component="button"
+            type="button"
+            aria-current={activePage === "agenda" ? "page" : undefined}
+            className={`sidebar-nav-item${activePage === "agenda" ? " active" : ""}`}
+            onClick={() => setActivePage("agenda")}
+          >
+            <CalendarMonthRoundedIcon aria-hidden="true" />
+            <span>Agenda</span>
+          </Box>
+        </Box>
+        <AssistantSpeedDial
+          isRecording={isRecording}
+          isBusy={isBusy}
+          isThinking={isThinking}
+          sttStatus={sttStatus}
+          transcription={transcription}
+          assistantResponse={assistantResponse}
+          subscribeToAudioLevel={subscribeToAudioLevel}
+          promptError={promptError}
+          isVoicePanelOpen={isVoicePanelOpen}
+          isStarting={isWaitingForRecording}
+          onShowVoicePanel={showVoicePanel}
+          onDismissVoicePanel={dismissVoicePanel}
+          onToggleRecording={toggleRecording}
+          onSubmitTextPrompt={submitTextPrompt}
+        />
+      </Box>
+
+      <Box component="div" className="dashboard-main">
+        <Container maxWidth="xl" disableGutters className="dashboard-content">
+          {recordingError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {recordingError}
+            </Alert>
+          )}
+          {speechError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {speechError}
+            </Alert>
+          )}
+          {promptError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {promptError}
+            </Alert>
+          )}
+          {activePage === "overview" ? (
+            <Box component="main" className="dashboard-grid">
+              <Weather />
+              <IndoorTemp sseEventSource={eventSource} />
+              <RecipesCard />
+              <ShoppingList sseEventSource={eventSource} />
+              <Paper
+                component="section"
+                className="dashboard-card info-card timeline-card"
+                elevation={0}
+              >
+                <EventTimeline onOpenAgenda={() => setActivePage("agenda")} />
+              </Paper>
+              <GoogleMap sseEventSource={eventSource} />
+            </Box>
+          ) : (
+            <Box component="main" className="agenda-page">
+              <Typography
+                component="h1"
+                variant="h4"
+                className="agenda-page-title"
+              >
+                Agenda
+              </Typography>
+              <Paper
+                component="section"
+                className="dashboard-card agenda-page-card"
+                elevation={0}
+              >
+                <Suspense
+                  fallback={
+                    <div className="agenda-status">
+                      Chargement de l'agenda...
+                    </div>
+                  }
+                >
+                  <Agenda showHeading={false} />
+                </Suspense>
+              </Paper>
+            </Box>
+          )}
+        </Container>
+      </Box>
     </Box>
   );
 }

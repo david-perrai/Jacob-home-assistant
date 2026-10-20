@@ -99,11 +99,14 @@ export default function IndoorTemp({ sseEventSource }: IndoorTempProps) {
     }
   };
 
+  const isThermostatReachable = Object.values(data?.rooms ?? {}).every(
+    (room) => room.reachable,
+  );
+
   if (loading) {
     return (
       <section className="dashboard-card indoor-temp-card loading">
         <div className="card-header">
-          <span className="icon">🌡️</span>
           <h2>Température intérieure</h2>
         </div>
         <div className="indoor-temp-content">Chargement des données...</div>
@@ -115,7 +118,6 @@ export default function IndoorTemp({ sseEventSource }: IndoorTempProps) {
     return (
       <section className="dashboard-card indoor-temp-card auth-needed">
         <div className="card-header">
-          <span className="icon">🌡️</span>
           <h2>Température intérieure</h2>
         </div>
         <div className="netatmo-auth-prompt">
@@ -135,7 +137,6 @@ export default function IndoorTemp({ sseEventSource }: IndoorTempProps) {
     return (
       <section className="dashboard-card indoor-temp-card error">
         <div className="card-header">
-          <span className="icon">⚠️</span>
           <h2>Température intérieure</h2>
         </div>
         <div className="indoor-temp-content error-text">
@@ -148,7 +149,6 @@ export default function IndoorTemp({ sseEventSource }: IndoorTempProps) {
   return (
     <section className="dashboard-card indoor-temp-card">
       <div className="card-header">
-        <span className="icon">🌡️</span>
         <h2>Température intérieure</h2>
       </div>
 
@@ -157,32 +157,49 @@ export default function IndoorTemp({ sseEventSource }: IndoorTempProps) {
           <div key={info.id} className="room-card">
             <div className="room-status-indicator">
               <span
-                className={`status-dot ${info.reachable ? "online" : "offline"}`}
+                className={`room-name-indicator ${info.reachable ? "online" : "offline"}`}
+                aria-hidden="true"
               />
               <span className="room-name">{roomName}</span>
             </div>
 
-            {info.temperature !== undefined ? (
-              <div className="room-temp">
-                <span className="temp-value">
-                  {info.temperature.toFixed(1)}
-                </span>
-                <span className="temp-unit">°C</span>
-              </div>
-            ) : (
-              <div className="room-temp-missing">--</div>
-            )}
+            <div className="room-reading">
+              {info.temperature !== undefined ? (
+                <div className="room-temp">
+                  <span className="temp-value">
+                    {new Intl.NumberFormat("fr-FR", {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    }).format(info.temperature)}
+                    °
+                  </span>
+                </div>
+              ) : (
+                <div className="room-temp-missing">--</div>
+              )}
 
-            {info.setpoint !== undefined && (
-              <div className="room-setpoint">
-                <span>Consigne : </span>
-                <span className="setpoint-value">
-                  {info.setpoint.toFixed(1)}°C
-                </span>
-              </div>
-            )}
+              {info.setpoint !== undefined && (
+                <div className="room-setpoint">
+                  <span>Cible</span>
+                  <span className="setpoint-value">
+                    {info.setpoint.toFixed(0)}°
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         ))}
+      </div>
+      <div
+        className={`thermostat-status ${isThermostatReachable ? "online" : "offline"}`}
+        role="status"
+      >
+        <span className="status-dot" aria-hidden="true" />
+        <span>
+          {isThermostatReachable
+            ? "Thermostat connecté"
+            : "Thermostat hors ligne"}
+        </span>
       </div>
     </section>
   );

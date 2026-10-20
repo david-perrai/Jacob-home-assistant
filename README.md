@@ -39,7 +39,7 @@ Le projet est divisé en deux parties principales :
 - Java 25
 - Node.js (v18+)
 - Maven
-- [Ollama](https://ollama.com/) (avec les modèles `llama3.2:3b` et `nomic-embed-text` installés)
+- [Ollama](https://ollama.com/) (avec le modèle de conversation configuré et `bge-m3` pour les embeddings)
 - PostgreSQL
 
 ### Backend
@@ -61,19 +61,31 @@ Le projet est divisé en deux parties principales :
      -o models/ggml-small-q5_1.bin
    ```
 
-Pour importer des documents RAG, installez également le modèle d'embeddings puis
-utilisez le bouton d'import flottant dans l'interface :
+Installez le modèle d'embeddings configuré dans
+`backend/src/main/resources/application.yaml` :
 
 ```bash
-ollama pull nomic-embed-text
+ollama pull bge-m3
 ```
 
+Les recettes sont vectorisées dans `recipe_embeddings` au démarrage du backend
+et à chaque création. Elles peuvent être cherchées par similarité sémantique avec
+`GET /recipes/search?query=une%20recette%20avec%20des%20légumes` ; l'API renvoie
+jusqu'à `recipe-search.max-results` résultats avec leur score de similarité.
+Les embeddings sont conservés séparément de ceux des documents RAG.
+
+Pour importer des documents RAG, utilisez le bouton d'import flottant dans l'interface.
 L'API d'import est `POST /rag/documents` avec un champ multipart `file`. Les
 fichiers PDF et TXT sont acceptés ; ils sont découpés selon `rag.chunk-size` et
 `rag.chunk-overlap` dans `backend/src/main/resources/application.yaml`, puis
 indexés dans la table `jacob_embeddings` de PostgreSQL. Lors d'une conversation,
 Jacob recherche les passages documentaires pertinents selon `rag.max-results`
 et `rag.min-score` et les ajoute au contexte de réponse.
+
+La modal de saisie clavier permet aussi de joindre un PDF, un TXT ou une image
+JPEG, PNG ou WebP à une demande. Le fichier est envoyé avec le texte en multipart
+à `POST /prompt` et fourni directement au modèle pour cette demande ; il n'est
+pas ajouté à l'index documentaire RAG.
 
 ### Service de transcription Whisper
 
@@ -157,6 +169,17 @@ Depuis le dossier `frontend`, installez les dépendances et lancez le serveur :
 Le nom Bonjour actuel de ce Mac est `MacBook-Pro-de-david.local`. Depuis un appareil sur le même réseau, lancez le frontend avec `pnpm dev` et ouvrez `https://macbook-pro-de-david.local:5173` au lieu de saisir l’adresse IP. Vite autorise ce nom.
 
 Pour utiliser un nom plus court, remplacez le nom local du Mac par `jacob` dans **Réglages Système > Général > Partage** ; il sera alors accessible sous `jacob.local` (également autorisé par Vite). Bonjour résout le nom vers l’adresse IP courante du Mac : aucune réservation DHCP ni entrée DNS dans le routeur n’est nécessaire. La résolution du nom et la confiance HTTPS sont indépendantes.
+
+### Installer Jacob sur une tablette
+
+Sur Android, ouvrez le site dans Chrome puis choisissez **Installer
+l'application** ou **Ajouter à l'écran d'accueil**. Sur iPad, ouvrez-le dans
+Safari, touchez **Partager**, puis **Sur l'écran d'accueil**.
+
+L'installation nécessite une connexion HTTPS considérée comme sûre par la
+tablette. En développement, le certificat HTTPS local doit être approuvé par
+la tablette ; ignorer simplement l'avertissement du navigateur peut ne pas
+suffire à activer l'installation.
 
 ## 📂 Structure du Projet
 

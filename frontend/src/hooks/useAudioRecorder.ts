@@ -2,7 +2,10 @@ import { useCallback, useRef, useState } from 'react';
 
 const TARGET_SAMPLE_RATE = 16000;
 
-export function useAudioRecorder(onSilenceDetected?: () => void) {
+export function useAudioRecorder(
+    onSilenceDetected?: () => void,
+    onAudioLevel?: (level: number) => void,
+) {
     const [isRecording, setIsRecording] = useState(false);
     const [audioData, setAudioData] = useState<Float32Array | null>(null);
     const [recordingError, setRecordingError] = useState<string | null>(null);
@@ -12,6 +15,7 @@ export function useAudioRecorder(onSilenceDetected?: () => void) {
     const sourceRef       = useRef<MediaStreamAudioSourceNode | null>(null);
     const streamRef       = useRef<MediaStream | null>(null);
     const samplesRef      = useRef<Float32Array[]>([]);
+    const lastAudioLevelUpdateRef = useRef(0);
 
     const flush = useCallback(() => {
         if (!samplesRef.current.length) return;
@@ -40,8 +44,9 @@ export function useAudioRecorder(onSilenceDetected?: () => void) {
         audioContextRef.current = null;
 
         flush();
+        onAudioLevel?.(0);
         setIsRecording(false);
-    }, [flush]);
+    }, [flush, onAudioLevel]);
 
     const startRecording = useCallback(async () => {
         setRecordingError(null);
@@ -72,6 +77,7 @@ export function useAudioRecorder(onSilenceDetected?: () => void) {
             });
             streamRef.current = stream;
             samplesRef.current = [];
+            lastAudioLevelUpdateRef.current = 0;
 
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
             audioContextRef.current = new AudioContextClass({ sampleRate: TARGET_SAMPLE_RATE });
@@ -88,6 +94,11 @@ export function useAudioRecorder(onSilenceDetected?: () => void) {
             workletNodeRef.current.port.onmessage = (e) => {
                 if (e.data.type === 'samples') {
                     samplesRef.current.push(new Float32Array(e.data.buffer));
+                    const now = performance.now();
+                    if (now - lastAudioLevelUpdateRef.current >= 40) {
+                        lastAudioLevelUpdateRef.current = now;
+                        onAudioLevel?.(Math.min(1, e.data.rms * 14));
+                    }
                 } else if (e.data.type === 'silence') {
                     console.log('[Audio] Silence détecté → arrêt automatique');
                     onSilenceDetected?.();
@@ -126,7 +137,7 @@ export function useAudioRecorder(onSilenceDetected?: () => void) {
                 setRecordingError("Impossible de démarrer le micro. Vérifiez les réglages de Safari.");
             }
         }
-    }, [stopRecording, onSilenceDetected]);
+    }, [stopRecording, onSilenceDetected, onAudioLevel]);
 
     return { isRecording, audioData, recordingError, startRecording, stopRecording };
 }

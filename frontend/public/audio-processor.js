@@ -12,11 +12,10 @@ class AudioProcessor extends AudioWorkletProcessor {
         if (!input || this._stopped) return true;
 
         // Envoie les samples au thread principal
-        this.port.postMessage({ type: 'samples', buffer: input.slice() });
+        const rms = Math.sqrt(input.reduce((s, v) => s + v * v, 0) / input.length);
+        this.port.postMessage({ type: 'samples', buffer: input.slice(), rms });
 
         // Détection silence
-        const rms = Math.sqrt(input.reduce((s, v) => s + v * v, 0) / input.length);
-
         if (rms < this._silenceThreshold) {
             if (this._silenceStart === null) {
                 this._silenceStart = currentTime;

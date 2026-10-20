@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 interface WeatherData {
   current: {
@@ -45,9 +45,9 @@ const Weather: React.FC = () => {
 
       try {
         const response = await fetch(
-          `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city}&days=3&lang=fr`
+          `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city}&days=3&lang=fr`,
         );
-        if (!response.ok) throw new Error('Erreur réseau');
+        if (!response.ok) throw new Error("Erreur réseau");
         const data = await response.json();
         setWeather(data);
       } catch (err) {
@@ -68,7 +68,6 @@ const Weather: React.FC = () => {
     return (
       <section className="dashboard-card weather-card loading">
         <div className="card-header">
-          <span className="icon">⌛</span>
           <h2>Météo</h2>
         </div>
         <div className="weather-content">Chargement...</div>
@@ -80,7 +79,6 @@ const Weather: React.FC = () => {
     return (
       <section className="dashboard-card weather-card error">
         <div className="card-header">
-          <span className="icon">⚠️</span>
           <h2>Météo</h2>
         </div>
         <div className="weather-content">{error || "Erreur"}</div>
@@ -91,14 +89,9 @@ const Weather: React.FC = () => {
   return (
     <section className="dashboard-card weather-card">
       <div className="card-header">
-        <img 
-          src={weather.current.condition.icon} 
-          alt={weather.current.condition.text} 
-          className="weather-icon-main"
-        />
         <h2>Météo - {weather.location.name}</h2>
       </div>
-      
+
       <div className="weather-content">
         <div className="current-weather">
           <div className="temp">{Math.round(weather.current.temp_c)}°C</div>
@@ -109,10 +102,17 @@ const Weather: React.FC = () => {
           {weather.forecast.forecastday.map((day, index) => (
             <div key={day.date} className="forecast-item">
               <span className="forecast-date">
-                {index === 0 ? "Aujourd'hui" : 
-                 new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
+                {index === 0
+                  ? "Aujourd'hui"
+                  : new Date(day.date).toLocaleDateString("fr-FR", {
+                      weekday: "short",
+                    })}
               </span>
-              <img src={day.day.condition.icon} alt={day.day.condition.text} title={day.day.condition.text} />
+              <img
+                src={day.day.condition.icon}
+                alt={day.day.condition.text}
+                title={day.day.condition.text}
+              />
               <div className="forecast-temps">
                 <span className="max">{Math.round(day.day.maxtemp_c)}°</span>
                 <span className="min">{Math.round(day.day.mintemp_c)}°</span>

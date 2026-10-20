@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AiApi from "../api/AiApi";
 import { useAudioRecorder } from "./useAudioRecorder";
 import { useTextToSpeech } from "./useTextToSpeech";
@@ -10,13 +10,29 @@ const aiApi = new AiApi();
  * Orchestre le pipeline vocal : Enregistrement → Transcription → Réponse IA → TTS
  */
 export function useVoiceAssistant() {
+  const audioLevelListeners = useRef(new Set<(level: number) => void>());
+  const reportAudioLevel = useCallback((level: number) => {
+    audioLevelListeners.current.forEach((listener) => listener(level));
+  }, []);
+  const subscribeToAudioLevel = useCallback(
+    (listener: (level: number) => void) => {
+      audioLevelListeners.current.add(listener);
+      return () => {
+        audioLevelListeners.current.delete(listener);
+      };
+    },
+    [],
+  );
   const {
     isRecording,
     audioData,
     recordingError,
     startRecording,
     stopRecording,
-  } = useAudioRecorder(() => console.log("[App] Silence → arrêt déclenché"));
+  } = useAudioRecorder(
+    () => console.log("[App] Silence → arrêt déclenché"),
+    reportAudioLevel,
+  );
   const {
     transcription,
     sttStatus,
@@ -27,19 +43,22 @@ export function useVoiceAssistant() {
   const { speak, unlock, speechError } = useTextToSpeech();
   const [isThinking, setIsThinking] = useState(false);
   const [promptError, setPromptError] = useState<string | null>(null);
-  const [requestVersion, setRequestVersion] = useState(0);
+  const [assistantResponse, setAssistantResponse] = useState("");
 
   const submitPrompt = useCallback(
-    async (text: string): Promise<boolean> => {
+    async (text: string, file?: File): Promise<boolean> => {
       const request = text.trim();
-      if (!request) return false;
+      if (!request && !file) return false;
 
-      setTranscription(request);
-      setRequestVersion((version) => version + 1);
+      setAssistantResponse("");
+      setTranscription(
+        file ? `${request || "Fichier joint"} : ${file.name}` : request,
+      );
       setPromptError(null);
       setIsThinking(true);
       try {
-        const response = await aiApi.prompt(request);
+        const response = await aiApi.prompt(request, file);
+        setAssistantResponse(response);
         speak(response);
         return true;
       } catch (error) {
@@ -74,15 +93,16 @@ export function useVoiceAssistant() {
     }
 
     unlock();
+    setAssistantResponse("");
     clearTranscription();
     setPromptError(null);
     void startRecording();
   }, [isRecording, stopRecording, clearTranscription, startRecording, unlock]);
 
   const submitTextPrompt = useCallback(
-    (text: string) => {
+    (text: string, file?: File) => {
       unlock();
-      return submitPrompt(text);
+      return submitPrompt(text, file);
     },
     [submitPrompt, unlock],
   );
@@ -93,10 +113,11 @@ export function useVoiceAssistant() {
     speechError,
     promptError,
     transcription,
+    assistantResponse,
     sttStatus,
     isThinking,
     toggleRecording,
     submitTextPrompt,
-    requestVersion,
+    subscribeToAudioLevel,
   };
 }

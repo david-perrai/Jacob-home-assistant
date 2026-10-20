@@ -6,6 +6,9 @@ export default class ShoppingListApi {
 
     public async getShoppingList(): Promise<ShoppingItem[]> {
         const response = await fetch(this.endpoint);
+        if (!response.ok) {
+            throw new Error(`Erreur HTTP ${response.status}`);
+        }
         const result = await response.json();        
         if (result) {
             return result;
@@ -13,5 +16,13 @@ export default class ShoppingListApi {
         return [];
     }
 
+    public async deleteShoppingListItem(id: number): Promise<void> {
+        const response = await fetch(`${this.endpoint}/${id}/delete`, {
+            method: "POST",
+        });
+        if (!response.ok) {
+            throw new Error(`Erreur HTTP ${response.status}`);
+        }
+    }
     
 }
