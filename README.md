@@ -164,12 +164,6 @@ Depuis le dossier `frontend`, installez les dépendances et lancez le serveur :
    npm run dev
    ```
 
-### Accès local avec Bonjour
-
-Le nom Bonjour actuel de ce Mac est `MacBook-Pro-de-david.local`. Depuis un appareil sur le même réseau, lancez le frontend avec `pnpm dev` et ouvrez `https://macbook-pro-de-david.local:5173` au lieu de saisir l’adresse IP. Vite autorise ce nom.
-
-Pour utiliser un nom plus court, remplacez le nom local du Mac par `jacob` dans **Réglages Système > Général > Partage** ; il sera alors accessible sous `jacob.local` (également autorisé par Vite). Bonjour résout le nom vers l’adresse IP courante du Mac : aucune réservation DHCP ni entrée DNS dans le routeur n’est nécessaire. La résolution du nom et la confiance HTTPS sont indépendantes.
-
 ### Installer Jacob sur une tablette
 
 Sur Android, ouvrez le site dans Chrome puis choisissez **Installer
