@@ -42,3 +42,4 @@ tokens
 backend/target/*
 backend/models/*
 !backend/models/.gitkeep
+token-calendar-events/*

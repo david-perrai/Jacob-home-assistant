@@ -10,10 +10,29 @@ services:
     volumes:
       - postgres:/data/postgres
     ports:
-      - 5432:5432
+      - 5433:5432
     networks:
       - postgres
     restart: unless-stopped
+
+  whisper-server:
+    container_name: jacob-whisper
+    image: ghcr.io/ggml-org/whisper.cpp:main-vulkan
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - ./models:/models:Z
+    command: >
+      whisper-server
+      --host 0.0.0.0
+      --port 8081
+      --language fr
+      -m /models/ggml-large-v3-turbo-q5_0.bin
+    networks:
+      - postgres
 
 networks:
   postgres:
